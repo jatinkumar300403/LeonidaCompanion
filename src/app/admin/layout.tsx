@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
+import { AdminNav, type AdminNavItem } from "@/components/admin/admin-nav";
 import { Logo } from "@/components/layout/logo";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
 import { ROLE_LABELS } from "@/config/auth";
@@ -22,6 +23,11 @@ export const metadata: Metadata = {
 export default async function AdminLayout({ children }: LayoutProps<"/admin">) {
   if (!integrations.supabase) notFound();
   const { profile } = await requireRole("mod", "/admin");
+  const nav: AdminNavItem[] = [{ href: "/admin", label: "Dashboard" }];
+  if (profile.role === "admin") {
+    nav.push({ href: "/admin/articles", label: "Articles" }, { href: "/admin/launch", label: "Launch Hub" });
+  }
+  if (process.env.NODE_ENV === "development") nav.push({ href: "/admin/ui", label: "UI showcase" });
 
   return (
     <div className="flex min-h-dvh flex-col">
@@ -43,6 +49,7 @@ export default async function AdminLayout({ children }: LayoutProps<"/admin">) {
             </Link>
           </div>
         </div>
+        <AdminNav items={nav} />
       </header>
       <main id="main-content" tabIndex={-1} className="flex-1 focus:outline-none">
         {children}

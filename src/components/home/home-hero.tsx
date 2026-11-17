@@ -10,7 +10,14 @@ import { SUGGESTED_QUESTIONS } from "@/config/site";
  * Block 1 (SPEC §3): headline, countdown/status, the big AskBox with 4 suggestions, CTAs.
  * The gradient sits on "unofficial guide", never on "GTA VI" (rule 2: nothing logo-like).
  */
-export function HomeHero({ launchHint }: { launchHint: "upcoming" | "out" | "unknown" }) {
+export function HomeHero({
+  launchHint,
+  launchAt,
+}: {
+  launchHint: "upcoming" | "out" | "unknown";
+  /** An official instant from launch_facts, or LAUNCH_AT (D-020). */
+  launchAt?: string;
+}) {
   return (
     <section aria-labelledby="hero-title" className="grain relative overflow-hidden border-b bg-background">
       <DuskGlow />
@@ -28,7 +35,7 @@ export function HomeHero({ launchHint }: { launchHint: "upcoming" | "out" | "unk
             Straight answers, tips that work, explained features and sourced facts, plus a help forum for when
             you&apos;re stuck.
           </p>
-          <CountdownOrStatus className="mt-6" serverHint={launchHint} />
+          <CountdownOrStatus className="mt-6" serverHint={launchHint} launchAt={launchAt} />
           <AskBox className="mt-8" suggestions={SUGGESTED_QUESTIONS} />
           <div className="mt-6 flex flex-wrap gap-3">
             <Button asChild variant="secondary">

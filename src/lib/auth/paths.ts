@@ -18,6 +18,7 @@ const EXEMPT_PAGES = new Set([
   "/dmca",
   "/credits",
   "/impressum",
+  "/newsletter/confirm",
 ]);
 
 export function isOnboardingExempt(pathname: string): boolean {

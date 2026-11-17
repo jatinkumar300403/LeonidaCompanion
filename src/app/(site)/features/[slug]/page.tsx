@@ -1,25 +1,20 @@
 import type { Metadata } from "next";
-import { BookOpen } from "lucide-react";
-import { StubPage } from "@/components/shared/stub-page";
-import { humanizeSlug } from "@/lib/format";
-import { routes } from "@/lib/routes";
-import { buildMetadata } from "@/lib/seo/metadata";
+import { ArticleRoute, articleMetadata } from "@/components/articles/article-routes";
+
+// ISR (D-050): pages render on first visit, then stay cached until the publish pipeline's tags
+// invalidate them or 10 minutes pass.
+export const revalidate = 600;
+
+export function generateStaticParams() {
+  return [];
+}
 
 export async function generateMetadata({ params }: PageProps<"/features/[slug]">): Promise<Metadata> {
   const { slug } = await params;
-  return buildMetadata({ title: humanizeSlug(slug), section: "Features", path: routes.feature(slug), noindex: true });
+  return articleMetadata("feature", slug);
 }
 
 export default async function FeaturePage({ params }: PageProps<"/features/[slug]">) {
   const { slug } = await params;
-  return (
-    <StubPage
-      eyebrow="Features Explained"
-      title={humanizeSlug(slug)}
-      icon={BookOpen}
-      emptyTitle="This explainer isn't published yet"
-      emptyDescription="Explainers go live once they're written and checked."
-      links={[{ href: "/features", label: "All features", primary: true }]}
-    />
-  );
+  return <ArticleRoute type="feature" slug={slug} />;
 }

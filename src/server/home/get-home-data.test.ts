@@ -1,4 +1,5 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+import type { ArticleListItem } from "@/server/articles/model";
 import {
   SAMPLE_CLIPS,
   SAMPLE_FACTS,
@@ -9,10 +10,39 @@ import {
 } from "@/server/mock/data";
 import { EMPTY_HOME_DATA, getHomeData } from "./get-home-data";
 
+const latest = vi.hoisted(() => ({ tips: [] as ArticleListItem[] }));
+vi.mock("@/server/articles/queries", () => ({
+  getLatestArticles: async (type: string) => (type === "tip" ? latest.tips : []),
+}));
+
 describe("getHomeData", () => {
   it("never serves sample data outside development", async () => {
     expect(sampleDataEnabled).toBe(false); // NODE_ENV is "test" here
     expect(await getHomeData()).toEqual(EMPTY_HOME_DATA);
+  });
+
+  it("maps real articles, and keeps them over samples in development", async () => {
+    latest.tips = [
+      {
+        id: "a",
+        type: "tip",
+        slug: "real-tip",
+        title: "A real tip",
+        summary: "Summary",
+        tags: ["money"],
+        spoilerLevel: "none",
+        factStatus: null,
+        firstSourceUrl: null,
+        helpfulUp: 7,
+        publishedAt: "2026-11-19T00:00:00Z",
+        updatedAt: "2026-11-19T00:00:00Z",
+      },
+    ];
+    const data = await getHomeData({ sample: true });
+    expect(data.tips).toEqual([expect.objectContaining({ slug: "real-tip", helpfulCount: 7 })]);
+    expect(data.features).toEqual(SAMPLE_FEATURES);
+    expect((await getHomeData()).tips).toHaveLength(1);
+    latest.tips = [];
   });
 
   it("serves sample data when asked (development)", async () => {

@@ -15,6 +15,13 @@ export const RATE_LIMITS = {
   avatarUpload: { limit: 10, window: "1 h" },
   dataExport: { limit: 5, window: "1 d" },
   deleteAccount: { limit: 3, window: "1 h" },
+  articleWrite: { limit: 300, window: "1 h" },
+  articleAutosave: { limit: 1200, window: "1 h" },
+  coverUpload: { limit: 60, window: "1 h" },
+  helpfulVoteIp: { limit: 60, window: "1 h" },
+  newsletterIp: { limit: 5, window: "1 h" },
+  newsletterEmail: { limit: 3, window: "1 d" },
+  newsletterConfirm: { limit: 20, window: "1 h" },
 } as const satisfies Record<string, { limit: number; window: `${number} ${"s" | "m" | "h" | "d"}` }>;
 
 export type RateLimitScope = keyof typeof RATE_LIMITS;

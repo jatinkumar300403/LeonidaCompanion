@@ -49,3 +49,6 @@ Thumbs.db
 # ── Claude Code (personal settings + Playwright MCP scratch output)
 .claude/settings.local.json
 .playwright-mcp/
+
+# ── Next 16 regenerates this on every `next dev`; CLAUDE.md is the agent guide (D-034, D-060)
+AGENTS.md

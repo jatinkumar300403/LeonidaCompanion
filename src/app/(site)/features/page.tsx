@@ -1,29 +1,24 @@
 import type { Metadata } from "next";
 import { BookOpen } from "lucide-react";
-import { StubPage } from "@/components/shared/stub-page";
-import { buildMetadata } from "@/lib/seo/metadata";
+import { IndexRoute, indexMetadata, type IndexCopy } from "@/components/articles/article-routes";
 
-export async function generateMetadata(): Promise<Metadata> {
-  return buildMetadata({
-    title: "GTA 6 Features Explained",
-    path: "/features",
-    description: "How GTA 6's systems work, explained in plain English, with what is and isn't confirmed.",
-  });
+const copy: IndexCopy = {
+  type: "feature",
+  basePath: "/features",
+  eyebrow: "Features Explained",
+  title: "GTA 6 features explained",
+  metaTitle: "GTA 6 Features Explained",
+  description: "How the game's systems work, and what isn't confirmed yet.",
+  metaDescription: "How GTA 6's systems work, explained in plain English, with what is and isn't confirmed.",
+  icon: BookOpen,
+  emptyTitle: "Explainers are on the way",
+  emptyDescription: "Each one covers what a mechanic is, how it works and what isn't confirmed yet.",
+};
+
+export async function generateMetadata({ searchParams }: PageProps<"/features">): Promise<Metadata> {
+  return indexMetadata(copy, searchParams);
 }
 
-export default function FeaturesPage() {
-  return (
-    <StubPage
-      eyebrow="Features Explained"
-      title="GTA 6 features explained"
-      description="How the game's systems work, and what isn't confirmed yet."
-      icon={BookOpen}
-      emptyTitle="Explainers are on the way"
-      emptyDescription="Each one covers what a mechanic is, how it works and what isn't confirmed yet."
-      links={[
-        { href: "/ask", label: "Ask AI", primary: true },
-        { href: "/tips", label: "Browse tips" },
-      ]}
-    />
-  );
+export default function FeaturesPage({ searchParams }: PageProps<"/features">) {
+  return <IndexRoute copy={copy} searchParams={searchParams} />;
 }

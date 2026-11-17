@@ -27,6 +27,8 @@ export const sanitizeSchema: Options = {
       ],
       ["role", "note"],
       ["dataSpoiler", "block"],
+      // ::youtube[id] (articles only): an 11-character YouTube id, nothing else.
+      ["dataYoutube", /^[A-Za-z0-9_-]{11}$/],
     ],
     p: [["className", "callout-title"]],
     span: [["dataSpoiler", "inline"]],

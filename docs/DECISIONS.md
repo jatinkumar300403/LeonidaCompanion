@@ -214,3 +214,37 @@ Context7 wasn't connected in this session (D-001), so look an API up in Context7
     - `sharp` 0.35.5, a direct dependency for avatar re-encoding (it was already in the tree through Next).
   - shadcn checkbox, radio-group, switch, textarea, slider and alert-dialog, with their own focus rings removed so the global solid ring applies (D-028).
 - **D-049 · 2026-11-17 · `NEXT_PUBLIC_SUPABASE_URL` must be the bare project URL.** The env schema rejects a path such as `/rest/v1/`, which breaks auth and storage. The DEV value had one; it was fixed in `.env.local`.
+
+### Phase 3 (2026-11-18)
+
+- **D-050 · 2026-11-18 · Rendering per route** (confirms D-005 with Context7: `unstable_cache` + tags still works in Next 16.4; `updateTag` in Server Actions; `revalidateTag(tag, "max")` elsewhere).
+  - `/tips`, `/features`, `/facts` and `/online` render per request, because they read `searchParams` (tag, spoilers, sort, cursor). The data under them is tag-cached, so a request costs one cached read.
+  - Article pages are ISR: `generateStaticParams()` returns `[]`, `revalidate = 600`. `/launch` and `/` are ISR at 60 s.
+  - Index canonicals keep `?tag=` only; cursor pages are `noindex, follow`.
+- **D-051 · 2026-11-18 · Public reads.** `src/server/supabase/public.ts` is a cookie-less publishable-key client, so cached reads run as `anon` and RLS decides what is public. No service role for public pages.
+  - Tags: `articles`, `articles:<type>`, `article:<type>:<slug>`, `site-settings`, `launch-facts`. Admin actions call `updateTag` (read-your-writes); the cron calls `revalidateTag(…, "max")`.
+  - **Caveat:** rows changed directly in the database (SQL editor, scripts) skip the tags and show up within 10 minutes (5 for settings). Publish through the CMS.
+- **D-052 · 2026-11-18 · Scheduled publishing.** A scheduled article is `status = 'published'` with a future `published_at`; RLS already hides it. `/api/cron/publish-scheduled` (GET + POST, Bearer `CRON_SECRET`, D-012) runs the pipeline once `published_at` passes and sets the new `articles.pipeline_ran_at`. Publishing now sets it at once. The `vercel.json` cron entry waits for Phase 11 (Hobby vs Pro, Q3).
+- **D-053 · 2026-11-18 · "Was this helpful?" votes.**
+  - Signed-in votes go through RLS (`voter_key` = user id). Anonymous votes use an httpOnly `la_anon` cookie (random UUID); `voter_key` is `anon:` + its salted hash, written by the service role after checking the article is live.
+  - 60 votes an hour per IP. Pressing the same button again takes the vote back. The browser remembers its vote in localStorage; counts on the cached page refresh with ISR.
+  - The `updated_at` trigger now ignores counters, so votes don't change "Updated x ago".
+- **D-054 · 2026-11-18 · Newsletter double opt-in** (SPEC §9; the digest list reuses it in Phase 12).
+  - New columns: `pending_lists` (lists wait there until confirmed) and `confirm_sent_at`. `confirm_token` holds a SHA-256 hash of the emailed token, valid 7 days and single use.
+  - The confirm page needs a button press (POST), so email link scanners can't confirm on their own.
+  - The reply is always "check your inbox", so the form can't reveal who is subscribed. Limits: 5 an hour per IP, 3 a day per address.
+  - Turnstile mounts on first focus, so the footer form doesn't load Cloudflare's script on every page.
+  - **Without Resend:** in `next dev` the email goes to a dev outbox (logged, and served by `/api/test/mailbox?kind=newsletter` for `e2e-…` addresses). Production builds without Resend keep the forms disabled.
+- **D-055 · 2026-11-18 · Email templates.** Plain HTML + text from a pure function (`src/emails/newsletter-confirm.ts`, escaped and unit-tested) sent with the `resend` SDK. React Email's component package is deprecated on npm, so it isn't added.
+- **D-056 · 2026-11-18 · Slugs.** Generated from the title until the editor touches the field; unique per type with a `-2`, `-3` suffix. A slug locks once the article has been published or archived, so links never break. An article's type can't change after creation.
+- **D-057 · 2026-11-18 · Autosave scope.** Drafts and articles in review autosave every 5 s while there are changes. A live article changes only on "Update live article"; meanwhile unsaved edits are backed up in localStorage and offered back on the next visit. An unsaved-changes guard covers reloads and in-app links. No edit-conflict detection (one owner).
+- **D-058 · 2026-11-18 · Quick Tip limits and fact rules.** Title 5–160 characters, body 20–700. "2–5 sentences" is a live hint, not a rule. The summary is derived from the body; an optional source becomes `sources[0]`. Publishing a fact needs a status; confirmed needs a source; verified needs two (rule 7; the database enforces the first two).
+- **D-059 · 2026-11-18 · Admin access.** The article list, editor and `/admin/launch` are admin-only, matching RLS (only admins write articles and settings). Moderators see the dashboard. Dashboard numbers come from the service role (counts only, never rows).
+- **D-060 · 2026-11-18 · Phase 3 odds and ends.**
+  - `::youtube[11-char id]` on its own line becomes the click-to-load ClipEmbed facade, articles only (finishes D-035).
+  - TOC anchors use `github-slugger`, the slugger rehype-slug uses, so TOC links always match heading ids.
+  - `/api/og` uses `next/og` with the default font: dusk gradient, section, title, site name.
+  - Next 16's `next dev` writes a managed `AGENTS.md`; it is gitignored (CLAUDE.md is the agent guide, D-034).
+  - Onboarding now skips rate limits and Turnstile for dev test identities, as D-046 intended; E2E #1 failed once real Turnstile keys were added.
+  - **Dependencies added:** `resend` 6.38 (in the stack) and `github-slugger` 2.0 (already in the tree through rehype-slug).
+  - **Deferred:** `view_count` (needs a non-cached write), embedding similarity in "Related" (Phase 7), unsubscribe links (Phase 12).

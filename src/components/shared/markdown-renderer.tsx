@@ -2,10 +2,12 @@ import Markdown, { type Components, type Options } from "react-markdown";
 import rehypeSanitize from "rehype-sanitize";
 import rehypeSlug from "rehype-slug";
 import remarkGfm from "remark-gfm";
+import { ClipEmbed } from "@/components/clips/clip-embed";
 import { InlineSpoiler, SpoilerBlock } from "@/components/shared/spoiler";
 import { remarkCallouts } from "@/lib/markdown/remark-callouts";
 import { remarkCitations } from "@/lib/markdown/remark-citations";
 import { remarkSpoiler } from "@/lib/markdown/remark-spoiler";
+import { remarkYoutube, YOUTUBE_ID } from "@/lib/markdown/remark-youtube";
 import { sanitizeSchema } from "@/lib/markdown/sanitize-schema";
 import { cn } from "@/lib/utils";
 
@@ -43,6 +45,8 @@ const components: Components = {
   },
   div({ node, ...props }) {
     if (node?.properties?.dataSpoiler === "block") return <SpoilerBlock>{props.children}</SpoilerBlock>;
+    const youtube = node?.properties?.dataYoutube;
+    if (typeof youtube === "string" && YOUTUBE_ID.test(youtube)) return <YoutubeEmbed id={youtube} />;
     return <div {...props} />;
   },
   a({ node, href, ...props }) {
@@ -52,10 +56,35 @@ const components: Components = {
   },
 };
 
+/** `::youtube[id]` in an article: the click-to-load facade, nothing from YouTube until play (rule 1). */
+function YoutubeEmbed({ id }: { id: string }) {
+  return (
+    <ClipEmbed
+      className="my-6"
+      parentHosts={[]}
+      clip={{
+        id: 0,
+        platform: "youtube",
+        embedId: id,
+        url: `https://www.youtube.com/watch?v=${id}`,
+        title: "Embedded YouTube video",
+        creatorName: "YouTube",
+        creatorUrl: "https://www.youtube.com/",
+        durationSec: null,
+        thumbnailUrl: null,
+        category: "other",
+        score: 0,
+        orientation: "landscape",
+      }}
+    />
+  );
+}
+
 export function MarkdownRenderer({
   source,
   size = "lg",
   citations = 0,
+  youtube = false,
   className,
 }: {
   source: string;
@@ -63,9 +92,12 @@ export function MarkdownRenderer({
   size?: "lg" | "sm";
   /** Number of sources available: turns [1]…[n] into citation chips. 0 = off. */
   citations?: number;
+  /** Articles only: `::youtube[id]` lines become click-to-load embeds (SPEC §4). */
+  youtube?: boolean;
   className?: string;
 }) {
   const remarkPlugins: NonNullable<Options["remarkPlugins"]> = [remarkGfm, remarkCallouts, remarkSpoiler];
+  if (youtube) remarkPlugins.push(remarkYoutube);
   if (citations > 0) remarkPlugins.push([remarkCitations, { max: citations }]);
 
   return (

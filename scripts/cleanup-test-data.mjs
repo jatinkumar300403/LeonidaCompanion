@@ -38,6 +38,8 @@ const sweeps = [
   admin.from("threads").delete().like("title", "RLS %"),
   admin.from("threads").delete().like("title", "E2E %"),
   admin.from("articles").delete().like("slug", "rls-%"),
+  admin.from("articles").delete().like("title", "[E2E]%"),
+  admin.from("newsletter_subscribers").delete().like("email", "e2e-%@example.com"),
   admin.from("clips").delete().like("external_id", "rls-%"),
   admin.from("ask_logs").delete().like("question", "rls %"),
   admin.from("ingest_runs").delete().like("source_id", "rls-%"),

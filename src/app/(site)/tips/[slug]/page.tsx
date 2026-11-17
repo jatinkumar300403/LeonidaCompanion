@@ -1,25 +1,20 @@
 import type { Metadata } from "next";
-import { Lightbulb } from "lucide-react";
-import { StubPage } from "@/components/shared/stub-page";
-import { humanizeSlug } from "@/lib/format";
-import { routes } from "@/lib/routes";
-import { buildMetadata } from "@/lib/seo/metadata";
+import { ArticleRoute, articleMetadata } from "@/components/articles/article-routes";
+
+// ISR (D-050): pages render on first visit, then stay cached until the publish pipeline's tags
+// invalidate them or 10 minutes pass.
+export const revalidate = 600;
+
+export function generateStaticParams() {
+  return [];
+}
 
 export async function generateMetadata({ params }: PageProps<"/tips/[slug]">): Promise<Metadata> {
   const { slug } = await params;
-  return buildMetadata({ title: humanizeSlug(slug), section: "Tips", path: routes.tip(slug), noindex: true });
+  return articleMetadata("tip", slug);
 }
 
 export default async function TipPage({ params }: PageProps<"/tips/[slug]">) {
   const { slug } = await params;
-  return (
-    <StubPage
-      eyebrow="Tips & Tricks"
-      title={humanizeSlug(slug)}
-      icon={Lightbulb}
-      emptyTitle="This tip isn't published yet"
-      emptyDescription="Tips go live as soon as they're checked. Browse the others meanwhile."
-      links={[{ href: "/tips", label: "All tips", primary: true }]}
-    />
-  );
+  return <ArticleRoute type="tip" slug={slug} />;
 }

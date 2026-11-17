@@ -48,7 +48,8 @@ test("sign up with a magic link, choose a username and land on home", async ({ p
   await page.getByRole("checkbox", { name: /I accept the Terms and the Community Guidelines/ }).check();
   await page.getByRole("button", { name: "Finish sign-up" }).click();
 
-  await expect(page).toHaveURL(/\/$/);
+  // Profile creation plus the first dev compile of / can be slow while the suite runs in parallel.
+  await expect(page).toHaveURL(/\/$/, { timeout: 15_000 });
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Your unofficial guide to GTA VI");
   await expect(page.getByRole("button", { name: `Account menu for @${username}` })).toBeVisible();
 

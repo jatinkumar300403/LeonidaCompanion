@@ -1,6 +1,6 @@
 # PROGRESS — Leonida Atlas
 
-Launch: **Thu 19 Nov 2026**. Last updated: 2026-11-17 (Phase 2). Spec: `docs/SPEC.md`. Decisions: `docs/DECISIONS.md` (D-xxx).
+Launch: **Thu 19 Nov 2026**. Last updated: 2026-11-18 (Phase 3). Spec: `docs/SPEC.md`. Decisions: `docs/DECISIONS.md` (D-xxx).
 Legend: `[x]` done · `[ ]` to do · ⚡ = cut first if behind. The kit's fallback: ship 0–6 and 9–11 on launch day, then 7–8 on the 20th.
 
 ## Status
@@ -28,11 +28,27 @@ Legend: `[x]` done · `[ ]` to do · ⚡ = cut first if behind. The kit's fallba
     - inputs no longer blank after a failed submit;
     - stale field errors clear;
     - account slot width.
-- **Next:** Phase 3 (Prompt 3, content system + CMS) in a fresh session.
-- **Owner to-dos from Phase 2** (none block Phase 3):
+- **Done: Phase 3.**
+  - Content system and admin CMS (D-050 to D-060): 1 migration on DEV (`updated_at` ignores counters, `pipeline_ran_at`, newsletter opt-in columns), cached public reads, the publish pipeline (cache tags, embedding stub, IndexNow), the scheduled-publish cron, `/tips` `/features` `/facts` indexes and article pages, `/online`, `/launch`, newsletter double opt-in, `/api/og`, and the admin dashboard, article list, editor (Quick Tip + full mode) and `/admin/launch`.
+  - Checks:
+    - `pnpm typecheck`, `lint`, `format:check` and `build` pass, the build also without keys (CI);
+    - `pnpm test`: 434 unit tests;
+    - `pnpm test:db`: 51 RLS and trigger tests against DEV;
+    - `pnpm e2e`: 27 passed, 5 viewport skips, including E2E #6 (Quick Tip from a phone → visible on /tips), E2E #7 (spoilers) and the newsletter double opt-in.
+  - `pnpm seed:dev` put 18 `[SAMPLE]` drafts (3 per type) on DEV.
+  - Visual QA with the Playwright MCP of an article page, `/tips`, `/facts`, `/launch`, `/online`, `/admin`, `/admin/articles`, the Quick Tip and full editors and `/admin/launch`, at 390 and 1440 in dark and light. Fixes made during the check:
+    - the lede is hidden when a quick tip's summary repeats the body;
+    - the breadcrumb truncates on one line on phones;
+    - the sort controls wrap as one group;
+    - no scrollbars on the tag row and the admin tabs.
+- **Next:** Phase 4 (Prompt 4, Help Forum) in a fresh session.
+- **Owner to-dos from Phase 3:**
+  - Add `RESEND_API_KEY` and a real `EMAIL_FROM` on a verified domain. Until then newsletter sign-ups work only on DEV (dev outbox, D-054) and stay disabled in production.
+  - Optional: `INDEXNOW_KEY` (any 8–128 letters, digits or dashes), so publishing pings Bing.
+  - Publish through the CMS, not the Supabase table editor: direct edits show up only after the cache expires (up to 10 minutes, D-051).
+- **Owner to-dos from Phase 2** (none block Phase 4):
   - Supabase DEV → Auth → URL configuration: Site URL `http://localhost:3000` and redirect URL `http://localhost:3000/**` (plus the prod and preview URLs later, SETUP §2).
   - Turn on Google and Discord in Supabase. Their buttons appear automatically once enabled.
-  - Add the Turnstile keys. Until then DEV skips the bot check; production won't boot without them.
   - Resend SMTP in Supabase (Phase 3). The default Supabase mailer only sends to project team members, a few emails an hour.
   - Sign in once with `SEED_ADMIN_EMAIL`. That account becomes admin automatically when it finishes onboarding (D-041).
   - Optional: switch the magic-link email template to the `token_hash` link (`{{ .SiteURL }}/auth/callback?token_hash={{ .TokenHash }}&type=email`) so links also work when opened in another browser.
@@ -47,13 +63,17 @@ Legend: `[x]` done · `[ ]` to do · ⚡ = cut first if behind. The kit's fallba
   - `pnpm ingest:wiki` only prints a Phase 7 placeholder.
   - Sample clips use fake ids, so a loaded embed shows the platform's "unavailable" message. TikTok shows "Watch on TikTok" until Phase 5 adds `embed.js`.
   - ESLint 9 shows npm's deprecation warning. It stays until the plugins support ESLint 10 (D-034).
-  - The Supabase and Vercel MCP servers still need the owner's sign-in. Context7 and Playwright work. Phase 2 used the Supabase CLI and the Management API instead.
+  - The Supabase and Vercel MCP servers still need the owner's sign-in. Context7 and Playwright work. Phases 2–3 used the Supabase CLI and the Management API instead.
+  - Rows changed directly in the database skip the cache tags, so public pages show them within 10 minutes (D-051). `pnpm test:cleanup` deletes test articles the same way.
+  - `pnpm seed:dev` prints Node's "module type" warning (the repo has no `"type": "module"`). It is harmless.
+  - `next dev` regenerates a managed `AGENTS.md`; it is gitignored (D-060).
+  - The OG image uses the default font, not Bricolage Grotesque (Phase 9 can load the font file).
 
 ## Owner setup (docs/SETUP.md) → needed by
 - [x] Node 24.18 LTS, pnpm 12.21 (corepack, D-003), Git 2.55, Playwright Chromium; `CRON_SECRET` + `ANON_HASH_SALT` in `.env.local`
 - [x] `.mcp.json` has the DEV ref. [ ] Sign in to Supabase + Vercel MCP (`/mcp`)
 - [x] Supabase DEV keys + access token (with database write). [ ] DEV auth URLs, Google + Discord OAuth. [ ] PROD project → **Phase 11**
-- [x] Upstash Redis. [ ] Turnstile → before launch. [ ] Resend key + verified domain + Supabase SMTP → **Phase 3**
+- [x] Upstash Redis. [x] Turnstile keys. [ ] Resend key + verified domain + Supabase SMTP → before launch (newsletter is DEV-only until then)
 - [ ] Twitch app + YouTube key → **Phase 5**. Anthropic key + spend limit → **Phase 6**. Voyage key + limit → **Phase 7**
 - [ ] Domain (no "GTA", "Rockstar" or "Vice City") → **Phase 9/11**. Sentry → **Phase 9**. Vercel → **Phase 11**
 - [x] `.env.local`: `SEED_ADMIN_EMAIL` set. [ ] Check `ADMIN_EMAIL` and `WIKI_CONTACT_EMAIL`
@@ -76,11 +96,11 @@ Legend: `[x]` done · `[ ]` to do · ⚡ = cut first if behind. The kit's fallba
 - [x] `getSession`/`requireUser`/`requireRole`; `/admin/*` ≥ mod; `/u/[username]`; `/settings` (avatar → WebP, prefs, export, delete); E2E #1
 
 ### 3 · Content system + CMS · §4, §10 (dashboard, articles, launch), §13 (article SEO) · Prompt 3
-- [ ] `server/articles` queries + zod mutations; publish → `updateTag` / `revalidateTag(…, "max")` (D-005), embed stub, IndexNow; scheduled-publish cron
-- [ ] /tips, /features, /facts indexes (tags, spoiler-free default, sort, cursor + `<a>` fallback) + the §4 article template with JSON-LD and OG
-- [ ] /online coming-soon + waitlist; newsletter double opt-in (the digest list reuses it); /launch + `launch_facts`
-- [ ] /admin dashboard skeleton, article list + editor (Quick Tip at 390px; full mode, 5 s autosave, unsaved guard), /admin/launch
-- [ ] Dev-only `[SAMPLE]` drafts (`scripts/seed-dev.ts`); E2E #6, #7
+- [x] `server/articles` queries + zod mutations; publish → `updateTag` / `revalidateTag(…, "max")` (D-050, D-051), embed stub, IndexNow; scheduled-publish cron (D-052)
+- [x] /tips, /features, /facts indexes (tags, spoiler-free default, sort, cursor + `<a>` fallback) + the §4 article template with JSON-LD and OG
+- [x] /online coming-soon + waitlist; newsletter double opt-in (the digest list reuses it, D-054); /launch + `launch_facts`
+- [x] /admin dashboard skeleton, article list + editor (Quick Tip at 390px; full mode, 5 s autosave, unsaved guard, D-057), /admin/launch
+- [x] Dev-only `[SAMPLE]` drafts (`scripts/seed-dev.ts`); E2E #6, #7
 
 ### 4 · Help Forum · §5 (AI answer comes in Phase 8) · Prompt 4
 - [ ] `server/forum`: threads/posts (30-min edit, soft delete), votes, hot rank SQL, sorts (D-017), accept → solved, mentions, quote, reputation, new-account limits, links at rep ≥ 20

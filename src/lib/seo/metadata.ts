@@ -17,23 +17,46 @@ type PageMetadataInput = {
   section?: string;
   /** noindex: search, settings, admin, forum/new, held content, thin threads, stubs (SPEC §13). */
   noindex?: boolean;
+  /** OG image path, e.g. ogImagePath(title, section) → /api/og?… */
+  image?: string;
+  /** Article pages: OG type "article" with its dates. */
+  article?: { publishedTime?: string | null; modifiedTime?: string; tags?: string[] };
 };
 
-export function buildMetadata({ title, description, path, section, noindex }: PageMetadataInput): Metadata {
+export function buildMetadata({
+  title,
+  description,
+  path,
+  section,
+  noindex,
+  image,
+  article,
+}: PageMetadataInput): Metadata {
   const fullTitle = pageTitle(title, section);
-  const desc = description ?? siteConfig.description;
+  const desc = description || siteConfig.description;
+  const images = image ? [{ url: image, width: 1200, height: 630, alt: title }] : undefined;
+  const common = {
+    title: fullTitle,
+    description: desc,
+    url: path,
+    siteName: siteConfig.name,
+    locale: siteConfig.locale,
+    images,
+  };
   return {
     title: fullTitle,
     description: desc,
     alternates: { canonical: path },
-    openGraph: {
-      title: fullTitle,
-      description: desc,
-      url: path,
-      siteName: siteConfig.name,
-      locale: siteConfig.locale,
-      type: "website",
-    },
+    openGraph: article
+      ? {
+          ...common,
+          type: "article",
+          publishedTime: article.publishedTime ?? undefined,
+          modifiedTime: article.modifiedTime,
+          tags: article.tags,
+        }
+      : { ...common, type: "website" },
+    twitter: image ? { card: "summary_large_image", title: fullTitle, description: desc, images: [image] } : undefined,
     robots: noindex ? { index: false, follow: true } : undefined,
   };
 }

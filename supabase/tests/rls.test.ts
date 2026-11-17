@@ -29,6 +29,7 @@ type Ids = {
   removedPost: number;
   published: string;
   draft: string;
+  scheduled: string;
   approvedClip: number;
   pendingClip: number;
   notification: number;
@@ -112,13 +113,21 @@ describe.skipIf(!hasDevKeys)("RLS and triggers (DEV)", () => {
             published_at: new Date(Date.now() - 60_000).toISOString(),
           },
           { type: "tip", slug: `rls-${runId}-draft`, title: "Draft", status: "draft" },
+          {
+            type: "tip",
+            slug: `rls-${runId}-scheduled`,
+            title: "Scheduled",
+            status: "published",
+            published_at: new Date(Date.now() + 86_400_000).toISOString(),
+          },
         ])
         .select("id, slug"),
       "seed articles",
     );
     ids.published = articles.find((article) => article.slug.endsWith("published"))!.id;
     ids.draft = articles.find((article) => article.slug.endsWith("draft"))!.id;
-    articleIds.push(ids.published, ids.draft);
+    ids.scheduled = articles.find((article) => article.slug.endsWith("scheduled"))!.id;
+    articleIds.push(ids.published, ids.draft, ids.scheduled);
 
     const clips = must(
       await admin
@@ -207,9 +216,48 @@ describe.skipIf(!hasDevKeys)("RLS and triggers (DEV)", () => {
   });
 
   describe("public reads", () => {
-    it("anon reads published articles but not drafts", async () => {
-      const rows = must(await anon().from("articles").select("id").in("id", [ids.published, ids.draft]), "articles");
+    it("anon reads published articles but not drafts or scheduled ones", async () => {
+      const rows = must(
+        await anon().from("articles").select("id").in("id", [ids.published, ids.draft, ids.scheduled]),
+        "articles",
+      );
       expect(rows.map((row) => row.id)).toEqual([ids.published]);
+    });
+
+    it("mods read drafts and scheduled articles (the admin list), users don't", async () => {
+      const all = [ids.published, ids.draft, ids.scheduled];
+      expect(must(await mod.client.from("articles").select("id").in("id", all), "mod").length).toBe(3);
+      expect(must(await author.client.from("articles").select("id").in("id", all), "user").length).toBe(1);
+    });
+
+    it("a helpful vote updates the counters but not updated_at (Phase 3)", async () => {
+      const before = must(
+        await admin.from("articles").select("updated_at, helpful_up").eq("id", ids.published).single(),
+        "before",
+      );
+      must(
+        await other.client
+          .from("article_feedback")
+          .insert({ article_id: ids.published, voter_key: other.id, value: 1 }),
+        "vote",
+      );
+      const after = must(
+        await admin.from("articles").select("updated_at, helpful_up").eq("id", ids.published).single(),
+        "after",
+      );
+      expect(after.helpful_up).toBe(before.helpful_up + 1);
+      expect(after.updated_at).toBe(before.updated_at);
+      // An editorial change still touches it.
+      must(await admin.from("articles").update({ title: "Published (edited)" }).eq("id", ids.published), "edit");
+      const edited = must(await admin.from("articles").select("updated_at").eq("id", ids.published).single(), "e");
+      expect(edited.updated_at).not.toBe(before.updated_at);
+    });
+
+    it("users can't vote on drafts", async () => {
+      const vote = await other.client
+        .from("article_feedback")
+        .insert({ article_id: ids.draft, voter_key: other.id, value: 1 });
+      expect(vote.error).not.toBeNull();
     });
 
     it("anon reads approved clips but not pending ones", async () => {

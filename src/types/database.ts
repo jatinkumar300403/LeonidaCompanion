@@ -52,6 +52,7 @@ export type Database = {
           helpful_down: number
           helpful_up: number
           id: string
+          pipeline_ran_at: string | null
           published_at: string | null
           search: unknown
           slug: string
@@ -73,6 +74,7 @@ export type Database = {
           helpful_down?: number
           helpful_up?: number
           id?: string
+          pipeline_ran_at?: string | null
           published_at?: string | null
           search?: unknown
           slug: string
@@ -94,6 +96,7 @@ export type Database = {
           helpful_down?: number
           helpful_up?: number
           id?: string
+          pipeline_ran_at?: string | null
           published_at?: string | null
           search?: unknown
           slug?: string
@@ -491,30 +494,36 @@ export type Database = {
       }
       newsletter_subscribers: {
         Row: {
+          confirm_sent_at: string | null
           confirm_token: string | null
           confirmed_at: string | null
           created_at: string
           email: string
           id: number
           lists: string[]
+          pending_lists: string[]
           status: string
         }
         Insert: {
+          confirm_sent_at?: string | null
           confirm_token?: string | null
           confirmed_at?: string | null
           created_at?: string
           email: string
           id?: never
           lists?: string[]
+          pending_lists?: string[]
           status?: string
         }
         Update: {
+          confirm_sent_at?: string | null
           confirm_token?: string | null
           confirmed_at?: string | null
           created_at?: string
           email?: string
           id?: never
           lists?: string[]
+          pending_lists?: string[]
           status?: string
         }
         Relationships: []

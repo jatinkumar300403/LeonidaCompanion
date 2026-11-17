@@ -1,25 +1,20 @@
 import type { Metadata } from "next";
-import { BadgeCheck } from "lucide-react";
-import { StubPage } from "@/components/shared/stub-page";
-import { humanizeSlug } from "@/lib/format";
-import { routes } from "@/lib/routes";
-import { buildMetadata } from "@/lib/seo/metadata";
+import { ArticleRoute, articleMetadata } from "@/components/articles/article-routes";
+
+// ISR (D-050): pages render on first visit, then stay cached until the publish pipeline's tags
+// invalidate them or 10 minutes pass.
+export const revalidate = 600;
+
+export function generateStaticParams() {
+  return [];
+}
 
 export async function generateMetadata({ params }: PageProps<"/facts/[slug]">): Promise<Metadata> {
   const { slug } = await params;
-  return buildMetadata({ title: humanizeSlug(slug), section: "Facts", path: routes.fact(slug), noindex: true });
+  return articleMetadata("fact", slug);
 }
 
 export default async function FactPage({ params }: PageProps<"/facts/[slug]">) {
   const { slug } = await params;
-  return (
-    <StubPage
-      eyebrow="Facts"
-      title={humanizeSlug(slug)}
-      icon={BadgeCheck}
-      emptyTitle="This fact isn't published yet"
-      emptyDescription="Facts only go up with a source."
-      links={[{ href: "/facts", label: "All facts", primary: true }]}
-    />
-  );
+  return <ArticleRoute type="fact" slug={slug} />;
 }

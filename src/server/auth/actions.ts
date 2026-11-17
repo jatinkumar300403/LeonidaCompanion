@@ -98,10 +98,13 @@ export async function completeOnboarding(_prev: OnboardingState, formData: FormD
   if (session.profile) redirect(safeNextRoute(next));
 
   const { ip } = await requestContext();
-  const limit = await rateLimit("onboarding", session.userId);
-  if (!limit.success) return { status: "error", message: rateLimitMessage(limit.retryAfterSeconds) };
-  const turnstile = await verifyTurnstileForm(formData, ip);
-  if (!turnstile.ok) return { status: "error", message: turnstile.error };
+  // Dev test identities (`next dev` only) skip limits and Turnstile, as on the sign-in form (D-046).
+  if (!session.email || !isTestIdentity(session.email)) {
+    const limit = await rateLimit("onboarding", session.userId);
+    if (!limit.success) return { status: "error", message: rateLimitMessage(limit.retryAfterSeconds) };
+    const turnstile = await verifyTurnstileForm(formData, ip);
+    if (!turnstile.ok) return { status: "error", message: turnstile.error };
+  }
 
   const parsed = onboardingSchema.safeParse({
     username: formData.get("username") ?? "",
