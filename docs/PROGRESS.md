@@ -1,16 +1,37 @@
 # PROGRESS — Leonida Atlas
 
-Launch: **Thu 19 Nov 2026**. Last updated: 2026-11-17 (Phase 0). Spec: `docs/SPEC.md`. Decisions: `docs/DECISIONS.md` (D-xxx).
+Launch: **Thu 19 Nov 2026**. Last updated: 2026-11-17 (Phase 1). Spec: `docs/SPEC.md`. Decisions: `docs/DECISIONS.md` (D-xxx).
 Legend: `[x]` done · `[ ]` to do · ⚡ = cut first if behind. The kit's fallback: ship 0–6 and 9–11 on launch day, then 7–8 on the 20th.
 
 ## Status
-- **Done:** Phase 0. Kit files copied in, git initialised, `.env.local` created with generated secrets, versions checked, this plan written.
-- **Next:** Phase 1 (Prompt 1) in a fresh session. Owner: finish the Supabase + MCP setup below before Phase 2.
-- **Known issues:** the context7, playwright, supabase and vercel MCP servers weren't loaded in the Phase 0 session (D-001). Phase 1's visual checks need the Playwright MCP; Phase 2 needs the Supabase MCP + CLI.
+- **Done: Phase 0.** Kit files copied in, git initialised, `.env.local` created with generated secrets, versions checked, this plan written.
+- **Done: Phase 1.** Next 16.4.6 app with the "Leonida Dusk" design system, the layout shell, every §2 component, the home page, `/admin/ui`, stubs for every §1 route, and tooling plus CI (D-027 to D-037).
+  - Checks: `pnpm typecheck`, `lint`, `test` (297 unit tests) and `build` all pass. `pnpm e2e` passes 13 smoke tests on mobile 390×844 and desktop 1440×900.
+  - Visual QA: `/`, `/tips` and `/admin/ui` checked with the Playwright MCP at 390 and 1440, in dark and light. Fixes made during the check:
+    - hero art added;
+    - the clip art sun is round;
+    - disabled gradient buttons are neutral;
+    - thread score boxes are compact;
+    - inline spoilers wrap with the text;
+    - the showcase no longer autofocuses.
+- **Next:** Phase 2 (Prompt 2) in a fresh session. Before it, the owner must:
+  - create the Supabase DEV project and add its URL, publishable key, secret key, project ref and access token to `.env.local`;
+  - set the DEV ref in `.mcp.json`;
+  - sign in to the Supabase and Vercel MCP servers (`/mcp`).
+
+  Optional: push to a GitHub repo and connect it to Vercel for Preview deploys.
+- **Known issues:**
+  - CI (`.github/workflows/ci.yml`) has not run yet: there is no git remote.
+  - Vercel Production deploys fail until the D-023 keys exist (D-027). Preview deploys work.
+  - `pnpm db:push` and `db:types` need the supabase CLI, which Phase 2 adds (D-008).
+  - `pnpm ingest:wiki` only prints a Phase 7 placeholder.
+  - Sample clips use fake ids, so a loaded embed shows the platform's "unavailable" message. TikTok shows "Watch on TikTok" until Phase 5 adds `embed.js`.
+  - ESLint 9 shows npm's deprecation warning. It stays until the plugins support ESLint 10 (D-034).
+  - The Supabase and Vercel MCP servers still need the owner's sign-in. Context7 and Playwright worked in Phase 1.
 
 ## Owner setup (docs/SETUP.md) → needed by
 - [x] Node 24.18 LTS, pnpm 12.21 (corepack, D-003), Git 2.55, Playwright Chromium; `CRON_SECRET` + `ANON_HASH_SALT` in `.env.local`
-- [ ] `.mcp.json`: replace `YOUR_DEV_PROJECT_REF` with the DEV ref, start a new session, approve the 4 servers, sign in to Supabase + Vercel → **Phase 1/2**
+- [ ] `.mcp.json`: replace `YOUR_DEV_PROJECT_REF` with the DEV ref, start a new session, sign in to Supabase + Vercel (Context7 + Playwright already work) → **Phase 2**
 - [ ] Supabase DEV + PROD: keys, access token, auth URLs, Google + Discord OAuth → **Phase 2**
 - [ ] Upstash Redis + Turnstile → **Phase 2**. Resend key + verified domain + Supabase SMTP → **Phase 3**
 - [ ] Twitch app + YouTube key → **Phase 5**. Anthropic key + spend limit → **Phase 6**. Voyage key + limit → **Phase 7**
@@ -20,13 +41,13 @@ Legend: `[x]` done · `[ ]` to do · ⚡ = cut first if behind. The kit's fallba
 ## Build plan (phase · SPEC sections · deliverables)
 
 ### 1 · Scaffold, design system, layout · §1 routes/nav, §2, §3 (mock data), §16 · Prompt 1
-- [ ] Next 16.4 + TS strict + `src/` + pnpm, scaffolded in a temp dir and merged (D-025); Tailwind 4; shadcn init (Radix)
-- [ ] Leonida Dusk tokens: dark default, light, system-following, no flash (D-006); AA contrast unit test (D-007)
-- [ ] Fonts; `src/env.ts` (D-023); `config/{site,nav,tags}.ts` with `LAUNCH_AT` (D-020)
-- [ ] Shell: desktop header, mobile header + bottom tabs + More sheet, footer disclaimer (rule 3), skip link
-- [ ] §2 components, incl. MarkdownRenderer (gfm, sanitize, callouts, `||spoiler||`, anchors) + `/admin/ui` (public in dev only)
-- [ ] Original logo mark + favicons; home (§3) with mock data + empty states; a stub page for every §1 route
-- [ ] ESLint flat config (`eslint .`), Prettier, Vitest, Playwright (390×844 + 1440×900), GitHub Actions CI
+- [x] Next 16.4.6 + TS 6.0.3 strict + `src/` + pnpm 12, scaffolded in a temp dir and merged (D-025, D-034); Tailwind 4.3; shadcn 4.23 init (Radix)
+- [x] Leonida Dusk tokens: dark default, light, system-following, no flash (D-006, D-028); AA contrast unit test (D-007)
+- [x] Fonts; `src/env.ts` + `src/env.client.ts` (D-023, D-027); `config/{site,nav,tags}.ts` with `LAUNCH_AT` (D-020)
+- [x] Shell: desktop header, mobile header + bottom tabs + More sheet, footer disclaimer (rule 3), skip link (D-031)
+- [x] §2 components, incl. MarkdownRenderer (gfm, sanitize, callouts, `||spoiler||`, anchors, D-035) + `/admin/ui` (dev only, D-032)
+- [x] Original logo mark + favicons (D-036); home (§3) with `[SAMPLE]` data + empty states (D-030); a stub page for every §1 route
+- [x] ESLint flat config (`eslint .`), Prettier, Vitest, Playwright (390×844 + 1440×900) + smoke E2E, GitHub Actions CI
 
 ### 2 · Database, RLS, auth, profiles · §9, §11, §15 (RLS) · Prompt 2
 - [ ] Supabase CLI (D-008) linked to DEV; migrations: every §11 table, check, index (HNSW, GIN, trigram), trigger, function, `public_profiles`, buckets

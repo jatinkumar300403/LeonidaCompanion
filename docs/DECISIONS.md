@@ -66,3 +66,78 @@ Context7 wasn't connected in this session (D-001), so look an API up in Context7
 - **D-024 · 2026-11-17 · +15 reputation for user tips.** v1 has no tip-submission flow. The trigger fires when an article written by a role-`user` author is published, so it stays inert until such a flow exists.
 - **D-025 · 2026-11-17 · Scaffolding.** create-next-app refuses a folder that already holds CLAUDE.md, `.mcp.json` and similar files. Phase 1 scaffolds in a temp folder and moves the files in, keeping this repo's `.gitignore` and `.gitattributes` and merging in any new ignore entries.
 - **D-026 · 2026-11-17 · Bundle budgets.** Next 16's `next build` no longer prints route sizes. In Phase 9, pick a Turbopack-compatible bundle analyzer (check with Context7) to enforce the 150 KB article-page JS budget.
+
+### Phase 1 (2026-11-17)
+
+- **D-027 · 2026-11-17 · Env strictness (amends D-023).**
+  - `src/lib/env/schema.ts` validates every `.env.example` variable with zod when the server boots (`src/instrumentation.ts` → `src/env.ts`).
+  - Empty values (`KEY=`) count as unset. A malformed value always fails, and the error names the variable, never its value.
+  - The production-required set is enforced only when `VERCEL_ENV=production`. That set is D-023's list plus the Supabase URL and publishable key, plus an https `NEXT_PUBLIC_SITE_URL`.
+  - Local, CI and Preview builds run with no keys. Each missing integration hides its feature and logs one warning at server start. Nothing is logged during `next build`, where every worker would repeat it.
+  - **Consequence:** Vercel *Production* deploys fail until those keys exist. Preview deploys work.
+  - Client code reads `NEXT_PUBLIC_*` through the zod-free `src/env.client.ts`, so zod never ships to the browser.
+- **D-028 · 2026-11-17 · Theme tokens (implements D-006 and D-007).**
+  - Dark tokens sit on `:root, .dark`, so dark is the default without JS; `.light` overrides them. next-themes uses `defaultTheme="system"`.
+  - Text tokens, dark theme: `--pink-text #ff5c9d` and `--violet-text #a78bfa`. Orange and teal text use the SPEC accent.
+  - Text tokens, light theme: `--pink-text #b0124f`, `--orange-text #a84b00`, `--teal-text #0e6f68`, `--violet-text #6d28d9`, `--destructive #b71c1c`.
+  - Field borders use `--input` (#6b7287 / #7c8190). The focus ring is a solid 2 px outline (#ff3d8b / #b0124f). Both reach 3:1 or more on every surface.
+  - Tinted badges use a 12% fill. Labels on the dusk gradient and accent fills use `#0a0b10`.
+  - `src/lib/design/contrast.test.ts` parses `globals.css` and checks 209 pairs across both themes.
+- **D-029 · Proposed · No `motion` dependency.**
+  - SPEC §2 names the motion library. But its `layoutId` needs the `domMax` bundle (+28 KB), and animated cards would all become Client Components.
+  - Instead:
+    - card hover lift is the CSS `hover-lift` utility;
+    - the tab underline slides via a measured indicator and a CSS transition;
+    - toasts use sonner (shadcn's toast).
+  - All of it turns off under `prefers-reduced-motion`. Revisit if the owner wants richer motion.
+- **D-030 · 2026-11-17 · Sample data.**
+  - Placeholder content lives in `src/server/mock/data.ts`. Every title starts with "[SAMPLE]", which a unit test enforces, and none of it is a claim about the game.
+  - It is served only when `NODE_ENV=development`. Production and preview builds show the real empty states.
+  - Pages get data only through `src/server/*` getters, which later phases fill in: `getHomeData`, `getFlags` (D-018 defaults), `isNewsletterEnabled` and `getLaunchHint`.
+- **D-031 · 2026-11-17 · Navigation.**
+  - Below `lg` (1024 px) the header shrinks to logo + search, plus sign-in once available.
+  - A bottom bar then shows Home · Tips · Ask · Forum · Clips · More. The More sheet holds Features, Facts, Launch, Online, Settings and the theme switcher.
+  - Sign in stays hidden until Supabase is configured. A `/sign-in` stub in `(auth)` keeps links working.
+  - Nav hrefs are typed `Route`s (`typedRoutes: true`; `pnpm typecheck` runs `next typegen` first), and an E2E test requests every nav and footer link.
+  - `src/components/home/` is an extra folder beyond SPEC §16.
+- **D-032 · 2026-11-17 · Admin gate.** Until Phase 2 adds `requireRole('mod')`, `src/app/admin/layout.tsx` calls `notFound()` outside `next dev`. So `/admin/*`, including `/admin/ui`, returns 404 in every build.
+- **D-033 · 2026-11-17 · Dependencies added in Phase 1** (CLAUDE.md "Don'ts").
+  - **shadcn 4.23 with `--base radix`:** Base UI is now its default. It brings `radix-ui`, `class-variance-authority`, `lucide-react`, `tw-animate-css` and the `shadcn` CSS package. It also brings `cn`, shadcn's own replacement for clsx + tailwind-merge, published from shadcn-ui/cn. `sonner` comes with its toast.
+  - **Also added:**
+    - next-themes (D-006);
+    - zod;
+    - the markdown pipeline: react-markdown, remark-gfm, rehype-sanitize, rehype-slug, unist-util-visit;
+    - server-only;
+    - `@types/mdast` and `@types/hast`;
+    - Prettier with prettier-plugin-tailwindcss, and eslint-config-prettier.
+  - **Not needed:** `@vitejs/plugin-react` (Vitest 5 compiles TSX itself) and a direct sharp dependency.
+- **D-034 · 2026-11-17 · Tooling.**
+  - create-next-app 16.4.6 ran with these flags:
+    - `--no-cache-components` (D-005);
+    - `--no-agents-md` (CLAUDE.md is the agent guide);
+    - `--no-agent-feedback`;
+    - `--no-react-compiler`.
+  - Its template now uses `@tailwindcss/turbopack`, so there is no PostCSS config.
+  - ESLint stays on 9.x. eslint-config-next's react, jsx-a11y and import plugins only declare ESLint ≤ 9 peers, even though npm marks 9.x deprecated.
+  - TS 6 defaults `types` to `[]`, so tsconfig sets `"types": ["node"]`.
+  - pnpm 12 records build approvals as `allowBuilds` in `pnpm-workspace.yaml` (records D-003). `sharp` and `unrs-resolver` are set to `false`, since their prebuilt binaries work without the scripts. Nothing else asked.
+  - `@playwright/test` is pinned to 1.65.1 to match the installed Chromium.
+  - Prettier uses printWidth 120 and leaves the kit's Markdown and `.mcp.json` alone.
+- **D-035 · 2026-11-17 · Markdown pipeline.**
+  - Order: remark-gfm → remark-callouts → remark-spoiler → remark-citations (AI answers only) → rehype-sanitize → rehype-slug.
+    - remark-callouts handles the five GitHub alert types.
+    - remark-spoiler handles `||…||`. A paragraph that is only a spoiler becomes a block spoiler.
+    - rehype-sanitize uses the GitHub schema plus only our own classes and data attributes.
+  - Sanitizing runs before slugging, so heading ids stay readable and user text can't set an id. Raw HTML is never parsed.
+  - A markdown `#` heading renders as `<h2>`, so the page keeps its single h1.
+  - The `::youtube[id]` directive (SPEC §4) is left for Phase 3.
+- **D-036 · 2026-11-17 · Logo, icons, hero.**
+  - The mark is original: a dusk sun over water with a palm cut out, and no lettering. It lives in `src/components/layout/logo.tsx` and `src/app/icon.svg`.
+  - `pnpm gen:icons` renders `favicon.ico` (16/32/48) and `apple-icon.png` (180) through Playwright's Chromium.
+  - The hero gradient sits on "unofficial guide", never on "GTA VI" (rule 2).
+  - PWA and maskable icons come in Phase 9.
+- **D-037 · 2026-11-17 · Countdown, spoilers, forms.**
+  - **Countdown:** CountdownOrStatus ticks in the browser from LAUNCH_AT (local midnight, D-020). The server renders same-size placeholders until hydration. Once launch has passed in every time zone (after 19 Nov 12:00 UTC), the server renders the "Out now" pill directly via `getLaunchHint()`, with no layout shift.
+  - **Inline spoilers** are a `span role="button"` that reacts to Enter, Space or click, so long spoilers wrap with the text. Block spoilers use a real button.
+  - **Hidden spoiler text** is blurred, `aria-hidden` and `inert`. Revealing moves focus to the text.
+  - **Newsletter and waitlist forms** render disabled with "Sign-ups open soon" until Phase 3 wires the double opt-in.

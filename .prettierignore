@@ -1,0 +1,17 @@
+# Generated or vendored
+pnpm-lock.yaml
+pnpm-workspace.yaml
+.next
+node_modules
+coverage
+playwright-report
+test-results
+.playwright-mcp
+public
+
+# Kit docs and Markdown stay verbatim (D-002)
+docs
+*.md
+
+# Kit config files stay verbatim
+.mcp.json
