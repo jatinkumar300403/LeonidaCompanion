@@ -1,0 +1,11 @@
+# Keep LF everywhere (Prettier's default) even on Windows checkouts.
+* text=auto eol=lf
+
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.webp binary
+*.avif binary
+*.ico binary
+*.woff binary
+*.woff2 binary

@@ -1,0 +1,51 @@
+# ── Secrets: never commit (SETUP.md §0). .env.example is the only env file in git.
+.env*
+!.env.example
+
+# ── Dependencies
+/node_modules
+/.pnp
+.pnp.*
+
+# ── Next.js / build output
+/.next/
+/out/
+/build
+*.tsbuildinfo
+next-env.d.ts
+
+# ── Tests
+/coverage
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/
+/e2e/.auth/
+
+# ── Supabase CLI local state
+/supabase/.temp/
+/supabase/.branches/
+
+# ── Serwist (generated service worker)
+/public/sw.js
+/public/sw.js.map
+/public/swe-worker-*.js
+
+# ── Sentry / Vercel
+.sentryclirc
+.vercel
+
+# ── Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# ── OS / editor
+.DS_Store
+Thumbs.db
+*.pem
+
+# ── Claude Code (personal settings + Playwright MCP scratch output)
+.claude/settings.local.json
+.playwright-mcp/

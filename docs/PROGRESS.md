@@ -1,0 +1,117 @@
+# PROGRESS — Leonida Atlas
+
+Launch: **Thu 19 Nov 2026**. Last updated: 2026-11-17 (Phase 0). Spec: `docs/SPEC.md`. Decisions: `docs/DECISIONS.md` (D-xxx).
+Legend: `[x]` done · `[ ]` to do · ⚡ = cut first if behind. The kit's fallback: ship 0–6 and 9–11 on launch day, then 7–8 on the 20th.
+
+## Status
+- **Done:** Phase 0. Kit files copied in, git initialised, `.env.local` created with generated secrets, versions checked, this plan written.
+- **Next:** Phase 1 (Prompt 1) in a fresh session. Owner: finish the Supabase + MCP setup below before Phase 2.
+- **Known issues:** the context7, playwright, supabase and vercel MCP servers weren't loaded in the Phase 0 session (D-001). Phase 1's visual checks need the Playwright MCP; Phase 2 needs the Supabase MCP + CLI.
+
+## Owner setup (docs/SETUP.md) → needed by
+- [x] Node 24.18 LTS, pnpm 12.21 (corepack, D-003), Git 2.55, Playwright Chromium; `CRON_SECRET` + `ANON_HASH_SALT` in `.env.local`
+- [ ] `.mcp.json`: replace `YOUR_DEV_PROJECT_REF` with the DEV ref, start a new session, approve the 4 servers, sign in to Supabase + Vercel → **Phase 1/2**
+- [ ] Supabase DEV + PROD: keys, access token, auth URLs, Google + Discord OAuth → **Phase 2**
+- [ ] Upstash Redis + Turnstile → **Phase 2**. Resend key + verified domain + Supabase SMTP → **Phase 3**
+- [ ] Twitch app + YouTube key → **Phase 5**. Anthropic key + spend limit → **Phase 6**. Voyage key + limit → **Phase 7**
+- [ ] Domain (no "GTA", "Rockstar" or "Vice City") → **Phase 9/11**. Sentry → **Phase 9**. Vercel → **Phase 11**
+- [ ] `.env.local`: `SEED_ADMIN_EMAIL`, `ADMIN_EMAIL`, `WIKI_CONTACT_EMAIL` are still placeholders
+
+## Build plan (phase · SPEC sections · deliverables)
+
+### 1 · Scaffold, design system, layout · §1 routes/nav, §2, §3 (mock data), §16 · Prompt 1
+- [ ] Next 16.4 + TS strict + `src/` + pnpm, scaffolded in a temp dir and merged (D-025); Tailwind 4; shadcn init (Radix)
+- [ ] Leonida Dusk tokens: dark default, light, system-following, no flash (D-006); AA contrast unit test (D-007)
+- [ ] Fonts; `src/env.ts` (D-023); `config/{site,nav,tags}.ts` with `LAUNCH_AT` (D-020)
+- [ ] Shell: desktop header, mobile header + bottom tabs + More sheet, footer disclaimer (rule 3), skip link
+- [ ] §2 components, incl. MarkdownRenderer (gfm, sanitize, callouts, `||spoiler||`, anchors) + `/admin/ui` (public in dev only)
+- [ ] Original logo mark + favicons; home (§3) with mock data + empty states; a stub page for every §1 route
+- [ ] ESLint flat config (`eslint .`), Prettier, Vitest, Playwright (390×844 + 1440×900), GitHub Actions CI
+
+### 2 · Database, RLS, auth, profiles · §9, §11, §15 (RLS) · Prompt 2
+- [ ] Supabase CLI (D-008) linked to DEV; migrations: every §11 table, check, index (HNSW, GIN, trigram), trigger, function, `public_profiles`, buckets
+- [ ] RLS on every table + tests; `seed.sql` (categories, tags, settings + flags D-018, admin promote); `pnpm db:types`
+- [ ] `@supabase/ssr` + `src/proxy.ts` (`getClaims()`); /sign-in, /auth/callback (no open redirect), /onboarding (username, 16+, terms, Turnstile)
+- [ ] `getSession`/`requireUser`/`requireRole`; `/admin/*` ≥ mod; `/u/[username]`; `/settings` (avatar → WebP, prefs, export, delete); E2E #1
+
+### 3 · Content system + CMS · §4, §10 (dashboard, articles, launch), §13 (article SEO) · Prompt 3
+- [ ] `server/articles` queries + zod mutations; publish → `updateTag` / `revalidateTag(…, "max")` (D-005), embed stub, IndexNow; scheduled-publish cron
+- [ ] /tips, /features, /facts indexes (tags, spoiler-free default, sort, cursor + `<a>` fallback) + the §4 article template with JSON-LD and OG
+- [ ] /online coming-soon + waitlist; newsletter double opt-in (the digest list reuses it); /launch + `launch_facts`
+- [ ] /admin dashboard skeleton, article list + editor (Quick Tip at 390px; full mode, 5 s autosave, unsaved guard), /admin/launch
+- [ ] Dev-only `[SAMPLE]` drafts (`scripts/seed-dev.ts`); E2E #6, #7
+
+### 4 · Help Forum · §5 (AI answer comes in Phase 8) · Prompt 4
+- [ ] `server/forum`: threads/posts (30-min edit, soft delete), votes, hot rank SQL, sorts (D-017), accept → solved, mentions, quote, reputation, new-account limits, links at rep ≥ 20
+- [ ] /forum, /forum/[category], /forum/t/[id]/[slug], /forum/new (trigram "similar threads"); Online category gated by flag
+- [ ] Turnstile + rate limits on every write; block; report dialog; QAPage / DiscussionForumPosting; noindex; bell; `onThreadCreated()` hook; E2E #2 (without AI)
+
+### 5 · Clips · §6 · Prompt 5
+- [ ] `resolveClip` (both Twitch URL shapes; YouTube watch, youtu.be, shorts; TikTok oEmbed) + fixtures; Twitch token in Redis; GTA VI game-id check; embeddable + ≤ 60 s
+- [ ] /clips/submit, /clips (filters, sorts D-022, votes), /clips/[id] (VideoObject, creator credit, removal link), /clips/top/[week]
+- [ ] twitch-clips + weekly-clips crons (D-012); ClipEmbed facade (notice, `parent=` hosts, nocookie, TikTok on demand); CSP frame-src
+- [ ] /admin/clips (tap, A/R keys, source filter); E2E #4
+
+### 6 · Moderation & safety · §5 (safety), §8.2, §10 · Prompt 6
+- [ ] AI pre-check (Haiku 5.5, `messages.parse` + zod, 4 s timeout, fallback rule, D-011) on thread/post/clip/bio (D-016)
+- [ ] /admin/moderation (Held · Reports · Actions), ban dialog, audit log; /admin/users; flags screen; shadow-hold flag; Community Guidelines draft; E2E #3
+
+### 7 · Wiki ingestion + embeddings ⚡ · §7 · Prompt 7
+- [ ] `config/sources.ts` + licence guard test; confirm the real category names through each API first
+- [ ] Ingest script + time-boxed cron (D-013): wtf_wikipedia, spoiler sections, chunker, Voyage (D-010), upsert/delete, `ingest_runs`, etiquette
+- [ ] Fill the embed stub for articles and accepted answers (D-021); /admin/wiki; /credits; a real DEV run (200 pages)
+
+### 8 · Ask AI + forum suggestions + content gaps ⚡ · §8.1, §5 (AI answer), §10 (gaps) · Prompt 8
+- [ ] Hybrid retrieval (RRF k=60, trust boosts, ≤ 2 per page, top 8, spoiler filter) + tests; streamed answer with the §8.1 prompt; `ASK_MIN_SCORE` short-circuit
+- [ ] /api/ask (limits, 6 h cache, ask_logs); /ask + AskBox everywhere; citations, licences, 👍/👎, "Ask the community"
+- [ ] `onThreadCreated()` AI suggestion; /admin/gaps; MSW mocks; 15-question eval; E2E #5 + the AI part of #2
+
+### 9 · SEO, PWA, analytics, legal, performance · §13, §14 · Prompt 9
+- [ ] Metadata audit, canonicals, noindex, sitemaps, rss, robots, JSON-LD tests, `/api/og`
+- [ ] PWA via `@serwist/turbopack` (D-009); Vercel Analytics events; Sentry client/server/edge (check Turbopack source maps)
+- [ ] Security headers + CSP (D-014); legal pages; /dmca form → reports + email
+- [ ] Budgets (D-026), Lighthouse mobile ≥ 95, axe with 0 serious issues
+
+### 10 · QA hardening · §15 · Prompt 10
+- [ ] All E2E (mobile + desktop); RLS attacks; auth/zod/rate-limit/Turnstile audit; XSS payload list; open redirects; cron secret
+- [ ] Abuse cases; empty states; visual QA at 390/1440 in dark and light; `docs/RUNBOOK.md`; go/no-go list
+
+### 11 · Production deploy · §12 · Prompt 11
+- [ ] `docs/DEPLOY.md`; PROD Supabase gets migrations + seed only, plus auth config; re-link the CLI to DEV afterwards
+- [ ] Vercel env (Preview → DEV), domain + www, crons (Pro) or GitHub Actions; `NEXT_PUBLIC_SITE_HOSTS`
+- [ ] Prod smoke test, Sentry test error, Search Console + Bing, IndexNow key
+
+### 12 · Search, email notifications, digest (post-launch) · §1 (/search), §9 · Prompt 12
+- [ ] /search (FTS + trigram, tabs, highlights, ⌘K); notify-email cron; weekly digest + admin preview
+
+### 13 · Launch content drafts (separate session, Wed) · Prompt 13
+- [ ] Launch facts, 10 facts, 6 feature explainers, 5 pre-launch tips: all `draft`, official sources only
+
+## Risks
+1. **Time:** 12 phases in about 36 h. Connect the GitHub repo to Vercel right after Phase 1, so every phase gets a preview deploy on DEV and Phase 11 is mostly config.
+2. **Unlock time:** if consoles unlock at regional midnight, New Zealand starts around Wed 18 Nov 16:30 IST, so aim to be live before then (Q2).
+3. **Versions moved past the kit:** Next 16 (proxy.ts, the `revalidateTag` profile arg, no `next lint`, Turbopack builds), TS 7 (D-004), pnpm 12 build approvals (D-003).
+4. **Turbopack:** Serwist needs its Turbopack package (D-009). Sentry source maps under Turbopack aren't confirmed, so check them in Phase 9; the fallback is `next build --webpack`.
+5. **Contrast:** the SPEC accents fail AA as text in the light theme, violet fails on dark cards, and white labels fail on the dusk gradient (D-007).
+6. **Haiku 5.5 thinks by default**, and thinking counts toward SPEC's 700-token cap, so answers could get cut off (D-011).
+7. **External APIs:** Fandom's ToS and possible bot blocking, unverified wiki category names, and how many GTA VI clips Twitch has on day 1. Phases 5 and 7 check these against the live APIs.
+8. **Cost and abuse:** set Anthropic + Voyage spend limits before launch; rate limits + Turnstile on every public write.
+9. **Hosting:** Vercel Hobby is non-commercial only and limits crons, so it needs the GitHub Actions cron fallback, which can lag by minutes (Q3).
+## SPEC ambiguities → proposed resolution
+- Clip category `glitch-funny` (§6) vs `glitch` (§1, §11) → D-015
+- `held` exists in §11 but not in the §5 states, clips or bios → D-016
+- AI posts vs `reply_count`, "Unanswered" and the thin-thread noindex rule ("for 7 days") → D-017
+- Feature flags live in `site_settings` but Phases 3–4 need them before Phase 6 builds the screen → D-018
+- Routes missing from §1 (`/online/[slug]`, guides); `/search` is listed in §1 but built post-launch → D-019
+- `LAUNCH_AT` has no time or timezone → D-020
+- §7 says wiki-sync is POST, but Vercel Cron sends GET; 500 pages at 1 rps outlasts a function run → D-012, D-013
+- "Strict CSP" (nonces) conflicts with ISR → D-014
+- Embedding "enqueue" without a queue → D-021. Clip Hot and clip of the day are undefined → D-022
+- Which env vars are required → D-023. +15 rep for user tips, but there's no submission flow → D-024
+
+## Open questions for the owner
+- **Q1.** Anonymous Ask AI at launch? The seed has `FEATURE_ASK_ANON` off, so logged-out visitors can't use the home AskBox. Proposal: turn it on, with Turnstile + 5/day + a spend cap (Haiku costs about $0.001 per answer).
+- **Q2.** Exact unlock time: regional midnight, or one global time? It drives the countdown.
+- **Q3.** Vercel Hobby (non-commercial) or Pro (needed before ads or affiliate links, and allows frequent crons)?
+- **Q4.** Domain name (sets `NEXT_PUBLIC_SITE_URL`, the site hosts and `EMAIL_FROM`).
+- **Q5.** After reading Fandom's ToS: a scheduled wiki sync, or manual runs only?
