@@ -6,7 +6,7 @@ export type OAuthProvider = (typeof OAUTH_PROVIDERS)[number];
 
 /**
  * OAuth providers switched on in the Supabase dashboard, read from the public auth settings
- * endpoint (cached for an hour). Buttons only show for providers that will actually work.
+ * endpoint (cached for 5 minutes). Buttons only show for providers that will actually work.
  */
 export async function getEnabledProviders(): Promise<OAuthProvider[]> {
   const url = publicEnv.supabaseUrl;
@@ -15,7 +15,7 @@ export async function getEnabledProviders(): Promise<OAuthProvider[]> {
   try {
     const response = await fetch(`${url}/auth/v1/settings`, {
       headers: { apikey: key },
-      next: { revalidate: 3600 },
+      next: { revalidate: 300 },
       signal: AbortSignal.timeout(3000),
     });
     if (!response.ok) return [];
