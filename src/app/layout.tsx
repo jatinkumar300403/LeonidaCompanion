@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Bricolage_Grotesque, Inter, JetBrains_Mono } from "next/font/google";
 import { SkipLink } from "@/components/layout/skip-link";
+import { FlashToast } from "@/components/shared/flash-toast";
 import { ThemeProvider } from "@/components/layout/theme-provider";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -46,6 +47,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           <TooltipProvider delayDuration={200}>
             {children}
             <Toaster />
+            <FlashToast />
           </TooltipProvider>
         </ThemeProvider>
       </body>

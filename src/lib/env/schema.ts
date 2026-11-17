@@ -24,6 +24,10 @@ export function normalizeEnv(source: RawEnv): RawEnv {
 }
 
 const httpUrl = z.url({ protocol: /^https?$/ });
+/** The project URL itself: https://<ref>.supabase.co, with no path such as /rest/v1. */
+const supabaseUrl = httpUrl.refine((value) => new URL(value).pathname.replace(/\/+$/, "") === "", {
+  message: "must be the project URL (https://<project-ref>.supabase.co) without a path such as /rest/v1",
+});
 const optionalString = z.string().optional();
 const secret = z.string().min(32, "must be at least 32 characters (openssl rand -hex 32)").optional();
 
@@ -32,7 +36,7 @@ const publicSchema = z.object({
   NEXT_PUBLIC_SITE_URL: httpUrl.default("http://localhost:3000"),
   NEXT_PUBLIC_SITE_HOSTS: optionalString,
   NEXT_PUBLIC_SHOW_IMPRESSUM: z.stringbool().default(false),
-  NEXT_PUBLIC_SUPABASE_URL: httpUrl.optional(),
+  NEXT_PUBLIC_SUPABASE_URL: supabaseUrl.optional(),
   NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: optionalString,
   NEXT_PUBLIC_TURNSTILE_SITE_KEY: optionalString,
   NEXT_PUBLIC_SENTRY_DSN: httpUrl.optional(),

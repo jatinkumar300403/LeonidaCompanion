@@ -4,7 +4,10 @@ import { notFound } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { Logo } from "@/components/layout/logo";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
+import { ROLE_LABELS } from "@/config/auth";
 import { siteConfig } from "@/config/site";
+import { integrations } from "@/env";
+import { requireRole } from "@/server/auth/session";
 
 // No `title` here: a plain string would drop the root "%s | {SiteName}" template for admin pages.
 export const metadata: Metadata = {
@@ -12,11 +15,13 @@ export const metadata: Metadata = {
 };
 
 /**
- * Phase 1: the admin area exists only under `next dev` (D-032). Phase 2 replaces this check
- * with requireRole('mod') once auth exists.
+ * Staff only (SPEC §10): moderators and admins. Everyone else gets a plain 404 and signed-out
+ * visitors go to /sign-in (requireRole). Without Supabase there are no staff, so it 404s.
+ * Admin-only screens call requireRole("admin") themselves.
  */
-export default function AdminLayout({ children }: LayoutProps<"/admin">) {
-  if (process.env.NODE_ENV !== "development") notFound();
+export default async function AdminLayout({ children }: LayoutProps<"/admin">) {
+  if (!integrations.supabase) notFound();
+  const { profile } = await requireRole("mod", "/admin");
 
   return (
     <div className="flex min-h-dvh flex-col">
@@ -24,7 +29,7 @@ export default function AdminLayout({ children }: LayoutProps<"/admin">) {
         <div className="page-container flex h-14 items-center gap-3">
           <Logo compact />
           <span className="rounded-full border border-violet/30 bg-violet/12 px-2 text-xs leading-5 font-semibold whitespace-nowrap text-violet-text">
-            Admin<span className="hidden sm:inline"> · dev only</span>
+            {ROLE_LABELS[profile.role]}
           </span>
           <div className="ml-auto flex items-center gap-1">
             <ThemeToggle />

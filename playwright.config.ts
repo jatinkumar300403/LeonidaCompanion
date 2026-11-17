@@ -9,6 +9,8 @@ export default defineConfig({
   forbidOnly: Boolean(process.env.CI),
   retries: process.env.CI ? 2 : 0,
   reporter: process.env.CI ? "github" : "list",
+  // Deletes the e2e-…@example.com test users from DEV afterwards (D-044).
+  globalTeardown: "./e2e/global-teardown.ts",
   use: {
     baseURL,
     trace: "on-first-retry",

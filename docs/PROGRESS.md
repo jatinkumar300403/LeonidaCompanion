@@ -1,6 +1,6 @@
 # PROGRESS — Leonida Atlas
 
-Launch: **Thu 19 Nov 2026**. Last updated: 2026-11-17 (Phase 1). Spec: `docs/SPEC.md`. Decisions: `docs/DECISIONS.md` (D-xxx).
+Launch: **Thu 19 Nov 2026**. Last updated: 2026-11-17 (Phase 2). Spec: `docs/SPEC.md`. Decisions: `docs/DECISIONS.md` (D-xxx).
 Legend: `[x]` done · `[ ]` to do · ⚡ = cut first if behind. The kit's fallback: ship 0–6 and 9–11 on launch day, then 7–8 on the 20th.
 
 ## Status
@@ -14,29 +14,49 @@ Legend: `[x]` done · `[ ]` to do · ⚡ = cut first if behind. The kit's fallba
     - thread score boxes are compact;
     - inline spoilers wrap with the text;
     - the showcase no longer autofocuses.
-- **Next:** Phase 2 (Prompt 2) in a fresh session. Before it, the owner must:
-  - create the Supabase DEV project and add its URL, publishable key, secret key, project ref and access token to `.env.local`;
-  - set the DEV ref in `.mcp.json`;
-  - sign in to the Supabase and Vercel MCP servers (`/mcp`).
+- **Done: Phase 2.**
+  - Schema, RLS, auth, profiles, settings and the `/admin` gate are in place on Supabase DEV (D-038 to D-049): 9 migrations plus seed, every §11 table with RLS, and the storage buckets.
+  - The Supabase security advisor shows no errors. The one WARN, `get_my_profile`, is deliberate (D-039).
+  - Checks:
+    - `pnpm typecheck`, `lint`, `format:check` and `build` pass, the build also without keys (CI);
+    - `pnpm test`: 385 unit tests;
+    - `pnpm test:db`: 48 RLS and trigger tests against DEV;
+    - `pnpm e2e`: 23 passed, 3 viewport skips, including E2E #1 sign-up, onboarding redirects, open-redirect, delete account and the mod-only `/admin/ui`.
+  - Visual QA with the Playwright MCP of /sign-in, /onboarding, /settings, /u/[username] and the header menu at 390 and 1440, in dark and light. Fixes made during the check:
+    - short "Xbox Series" platform pill;
+    - large avatar initials;
+    - inputs no longer blank after a failed submit;
+    - stale field errors clear;
+    - account slot width.
+- **Next:** Phase 3 (Prompt 3, content system + CMS) in a fresh session.
+- **Owner to-dos from Phase 2** (none block Phase 3):
+  - Supabase DEV → Auth → URL configuration: Site URL `http://localhost:3000` and redirect URL `http://localhost:3000/**` (plus the prod and preview URLs later, SETUP §2).
+  - Turn on Google and Discord in Supabase. Their buttons appear automatically once enabled.
+  - Add the Turnstile keys. Until then DEV skips the bot check; production won't boot without them.
+  - Resend SMTP in Supabase (Phase 3). The default Supabase mailer only sends to project team members, a few emails an hour.
+  - Sign in once with `SEED_ADMIN_EMAIL`. That account becomes admin automatically when it finishes onboarding (D-041).
+  - Optional: switch the magic-link email template to the `token_hash` link (`{{ .SiteURL }}/auth/callback?token_hash={{ .TokenHash }}&type=email`) so links also work when opened in another browser.
+  - Sign in to the Supabase MCP (`/mcp`).
 
   Optional: push to a GitHub repo and connect it to Vercel for Preview deploys.
 - **Known issues:**
-  - CI (`.github/workflows/ci.yml`) has not run yet: there is no git remote.
+  - CI (`.github/workflows/ci.yml`) has not run yet: there is no git remote. In CI, `test:db` and the auth E2E tests skip (no DEV keys).
   - Vercel Production deploys fail until the D-023 keys exist (D-027). Preview deploys work.
-  - `pnpm db:push` and `db:types` need the supabase CLI, which Phase 2 adds (D-008).
+  - The magic link from the default email template uses PKCE, so it must be opened in the browser that requested it (see the template to-do above).
+  - Screenshots taken with the Playwright MCP during page load log a harmless hydration warning (Playwright injects `caret-color`).
   - `pnpm ingest:wiki` only prints a Phase 7 placeholder.
   - Sample clips use fake ids, so a loaded embed shows the platform's "unavailable" message. TikTok shows "Watch on TikTok" until Phase 5 adds `embed.js`.
   - ESLint 9 shows npm's deprecation warning. It stays until the plugins support ESLint 10 (D-034).
-  - The Supabase and Vercel MCP servers still need the owner's sign-in. Context7 and Playwright worked in Phase 1.
+  - The Supabase and Vercel MCP servers still need the owner's sign-in. Context7 and Playwright work. Phase 2 used the Supabase CLI and the Management API instead.
 
 ## Owner setup (docs/SETUP.md) → needed by
 - [x] Node 24.18 LTS, pnpm 12.21 (corepack, D-003), Git 2.55, Playwright Chromium; `CRON_SECRET` + `ANON_HASH_SALT` in `.env.local`
-- [ ] `.mcp.json`: replace `YOUR_DEV_PROJECT_REF` with the DEV ref, start a new session, sign in to Supabase + Vercel (Context7 + Playwright already work) → **Phase 2**
-- [ ] Supabase DEV + PROD: keys, access token, auth URLs, Google + Discord OAuth → **Phase 2**
-- [ ] Upstash Redis + Turnstile → **Phase 2**. Resend key + verified domain + Supabase SMTP → **Phase 3**
+- [x] `.mcp.json` has the DEV ref. [ ] Sign in to Supabase + Vercel MCP (`/mcp`)
+- [x] Supabase DEV keys + access token (with database write). [ ] DEV auth URLs, Google + Discord OAuth. [ ] PROD project → **Phase 11**
+- [x] Upstash Redis. [ ] Turnstile → before launch. [ ] Resend key + verified domain + Supabase SMTP → **Phase 3**
 - [ ] Twitch app + YouTube key → **Phase 5**. Anthropic key + spend limit → **Phase 6**. Voyage key + limit → **Phase 7**
 - [ ] Domain (no "GTA", "Rockstar" or "Vice City") → **Phase 9/11**. Sentry → **Phase 9**. Vercel → **Phase 11**
-- [ ] `.env.local`: `SEED_ADMIN_EMAIL`, `ADMIN_EMAIL`, `WIKI_CONTACT_EMAIL` are still placeholders
+- [x] `.env.local`: `SEED_ADMIN_EMAIL` set. [ ] Check `ADMIN_EMAIL` and `WIKI_CONTACT_EMAIL`
 
 ## Build plan (phase · SPEC sections · deliverables)
 
@@ -50,10 +70,10 @@ Legend: `[x]` done · `[ ]` to do · ⚡ = cut first if behind. The kit's fallba
 - [x] ESLint flat config (`eslint .`), Prettier, Vitest, Playwright (390×844 + 1440×900) + smoke E2E, GitHub Actions CI
 
 ### 2 · Database, RLS, auth, profiles · §9, §11, §15 (RLS) · Prompt 2
-- [ ] Supabase CLI (D-008) linked to DEV; migrations: every §11 table, check, index (HNSW, GIN, trigram), trigger, function, `public_profiles`, buckets
-- [ ] RLS on every table + tests; `seed.sql` (categories, tags, settings + flags D-018, admin promote); `pnpm db:types`
-- [ ] `@supabase/ssr` + `src/proxy.ts` (`getClaims()`); /sign-in, /auth/callback (no open redirect), /onboarding (username, 16+, terms, Turnstile)
-- [ ] `getSession`/`requireUser`/`requireRole`; `/admin/*` ≥ mod; `/u/[username]`; `/settings` (avatar → WebP, prefs, export, delete); E2E #1
+- [x] Supabase CLI (D-008) linked to DEV through the guard (D-040); migrations: every §11 table, check, index (HNSW, GIN, trigram), trigger, function, `public_profiles`, buckets
+- [x] RLS on every table + 48 DB tests (D-043); `seed.sql` (categories, tags, reserved names, settings + flags D-018, admin promote D-041); `pnpm db:types`
+- [x] `@supabase/ssr` + `src/proxy.ts` (`getClaims()`, onboarding redirect); /sign-in, /auth/callback (no open redirect), /onboarding (username live check, 16+, terms, Turnstile)
+- [x] `getSession`/`requireUser`/`requireRole`; `/admin/*` ≥ mod; `/u/[username]`; `/settings` (avatar → WebP, prefs, export, delete); E2E #1
 
 ### 3 · Content system + CMS · §4, §10 (dashboard, articles, launch), §13 (article SEO) · Prompt 3
 - [ ] `server/articles` queries + zod mutations; publish → `updateTag` / `revalidateTag(…, "max")` (D-005), embed stub, IndexNow; scheduled-publish cron

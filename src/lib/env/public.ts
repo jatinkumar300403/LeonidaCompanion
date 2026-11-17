@@ -10,6 +10,9 @@ export type PublicEnv = {
   siteHosts: string[];
   showImpressum: boolean;
   supabaseConfigured: boolean;
+  /** Project URL without a trailing slash, when configured. */
+  supabaseUrl: string | undefined;
+  supabasePublishableKey: string | undefined;
   turnstileSiteKey: string | undefined;
   sentryDsn: string | undefined;
 };
@@ -41,12 +44,16 @@ export function parseHostList(value: string | undefined): string[] {
 
 export function parsePublicEnv(raw: RawPublicEnv): PublicEnv {
   const siteUrl = (clean(raw.NEXT_PUBLIC_SITE_URL) ?? "http://localhost:3000").replace(/\/+$/, "");
+  const supabaseUrl = clean(raw.NEXT_PUBLIC_SUPABASE_URL)?.replace(/\/+$/, "");
+  const supabasePublishableKey = clean(raw.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY);
   return {
     siteName: clean(raw.NEXT_PUBLIC_SITE_NAME),
     siteUrl,
     siteHosts: parseHostList(raw.NEXT_PUBLIC_SITE_HOSTS),
     showImpressum: clean(raw.NEXT_PUBLIC_SHOW_IMPRESSUM)?.toLowerCase() === "true",
-    supabaseConfigured: Boolean(clean(raw.NEXT_PUBLIC_SUPABASE_URL) && clean(raw.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY)),
+    supabaseConfigured: Boolean(supabaseUrl && supabasePublishableKey),
+    supabaseUrl,
+    supabasePublishableKey,
     turnstileSiteKey: clean(raw.NEXT_PUBLIC_TURNSTILE_SITE_KEY),
     sentryDsn: clean(raw.NEXT_PUBLIC_SENTRY_DSN),
   };

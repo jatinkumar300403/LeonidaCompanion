@@ -141,3 +141,76 @@ Context7 wasn't connected in this session (D-001), so look an API up in Context7
   - **Inline spoilers** are a `span role="button"` that reacts to Enter, Space or click, so long spoilers wrap with the text. Block spoilers use a real button.
   - **Hidden spoiler text** is blurred, `aria-hidden` and `inert`. Revealing moves focus to the text.
   - **Newsletter and waitlist forms** render disabled with "Sign-ups open soon" until Phase 3 wires the double opt-in.
+
+### Phase 2 (2026-11-17)
+
+- **D-038 · 2026-11-17 · Profile completion and onboarding.**
+  - A `profiles` row exists only once onboarding is done (username, 16+, Terms + Guidelines). `handle_new_user()` creates it at sign-up only when the metadata already carries all three (for the future native app). It never raises, so a bad value can't block sign-up.
+  - `src/proxy.ts` refreshes the session with `getClaims()` and sends signed-in users without a profile to `/onboarding?next=…`. Auth, API, sign-in and the legal pages stay reachable.
+  - An `onboarded_uid` cookie hint means one profile lookup per session. It is a UX shortcut only: RLS still needs a profile for every write.
+  - Added `profiles.terms_accepted_at` (not null). Usernames can't be changed after onboarding (no column grant).
+  - The header's account control (`UserMenu`) reads the session in the browser. Public pages stay static/ISR; only `/settings`, `/onboarding`, `/sign-in`, `/u/[username]` and `/admin` render per request.
+- **D-039 · 2026-11-17 · Column grants instead of trusting the client.**
+  - `anon`/`authenticated` can select only the public profile columns. `public_profiles` is a `security_invoker` view over them.
+  - The owner reads their private columns (ban state, email prefs, age/terms timestamps) through `get_my_profile()`. It is security definer and returns only `auth.uid()`'s row. The Supabase advisor's WARN for it is accepted.
+  - Insert/update column grants on profiles, threads, posts, clips, reports and notifications mean users can't set role, reputation, ban state, scores, counters or ids.
+  - Guard triggers (security invoker) stop non-mods changing author, category or status. The exceptions are soft-delete and accept → solved. Non-mods also can't edit removed, held or locked items.
+  - The 30-minute edit window is left to Phase 4's server code.
+- **D-040 · 2026-11-17 · Supabase CLI, DEV only.** Every `db:*` script goes through `scripts/supabase.mjs`.
+  - It loads `.env.local` and refuses to run unless the URL, `SUPABASE_PROJECT_REF_DEV` and `supabase/.temp/project-ref` all agree and differ from the PROD ref.
+  - Commands target DEV explicitly (`--remote=@dev`).
+  - CLI 3.1.0 mints a temporary login role from `SUPABASE_ACCESS_TOKEN`, so no database password is needed. The token needs the **database write** permission; the first token didn't have it.
+  - Phase 11 needs an explicit PROD path, because this guard refuses PROD on purpose.
+- **D-041 · 2026-11-17 · Seed admin.** `seed.sql` can't read environment variables. `pnpm db:seed` pushes the seed, then `scripts/seed-admin.mjs` calls `set_seed_admin(SEED_ADMIN_EMAIL)`. That function is service-role only and stores the address in `private.seed_admins`. The account is promoted at once if its profile exists, otherwise automatically when its profile is created. `seed.sql` also re-promotes on every run.
+- **D-042 · 2026-11-17 · Schema details beyond SPEC §11.**
+  - `tags` and `reserved_usernames` tables, seeded from `src/config/tags.ts` and `src/config/auth.ts`. A unit test keeps `seed.sql` in step with them.
+  - Foreign keys to profiles from content (threads, posts, articles, clips, reports, ask_logs) are `on delete set null`, so a deleted account leaves "[deleted user]". Votes, blocks and notifications cascade.
+  - Identity columns replace bigserial.
+  - Reports also accept `profile`, `article` and `dmca` targets and a `copyright` reason (for Phase 9's /dmca).
+  - Published facts need `fact_status`, and confirmed facts a source (CLAUDE.md rule 7), enforced by check constraints.
+  - `match_chunks` and `search_chunks_fts` can be executed by the service role only. Phase 8 calls them from `src/server/admin`, so the knowledge base can't be scraped through the public API (advisor fix).
+  - Admin write policies are split per action (one permissive SELECT policy per table).
+  - The database locks a category through `is_locked` only. When Phase 6's flag screen turns `FEATURE_ONLINE` on, it must also unlock the Online category (D-018).
+- **D-043 · 2026-11-17 · RLS tests run against DEV.**
+  - `pnpm test:db` (Vitest, `supabase/tests/`) uses throwaway `rls-…@example.com` users: user, other, banned, mod, admin.
+  - It checks every §11 rule, the triggers and storage, and asks the Management API that every public table has RLS on.
+  - It refuses to run against anything but DEV and skips when the keys are missing (CI).
+  - It is kept out of `pnpm test`, which stays offline.
+  - `pnpm test:cleanup` sweeps leftover test users and rows.
+  - Chose this over pgTAP because the Docker daemon isn't running on this machine.
+- **D-044 · 2026-11-17 · Magic links in tests.**
+  - Under `next dev`, sign-ins for `e2e-…@example.com` addresses skip email. `admin.generateLink` creates the link, which is kept in a server-side mailbox that `GET /api/test/mailbox` hands to Playwright.
+  - In production builds `NODE_ENV` is `production`: the route 404s and the branch is dead code.
+  - The auth E2E tests need the DEV keys and skip without them. Playwright's global teardown runs `pnpm test:cleanup`.
+- **D-045 · 2026-11-17 · Avatars.**
+  - The browser crops a square (drag, zoom slider, arrow keys) to 512 px and encodes WebP, with a JPEG fallback.
+  - The Server Action re-encodes it with **sharp**. That strips EXIF, checks it really is an image and caps it at 512 px WebP ≤ 2 MB. The action uploads as the user to `avatars/<uid>/` (storage RLS) and deletes the old file.
+  - The avatars bucket accepts WebP only, up to 2 MB.
+  - Source photos up to 15 MB are accepted in the browser: SPEC's 2 MB limit applies to the stored avatar.
+- **D-046 · 2026-11-17 · Turnstile and rate limits.**
+  - **Turnstile** guards the magic-link form and onboarding. With no keys (local DEV now), the widget is hidden and the server check is skipped. Production can't boot without the keys (D-023).
+  - **Upstash limits:**
+    - magic link: 5 per 15 min per IP and 3 per 15 min per email;
+    - username check: 60 a minute;
+    - onboarding: 10 an hour;
+    - profile saves: 30 an hour;
+    - avatar: 10 an hour;
+    - export: 5 a day;
+    - delete: 3 an hour.
+  - Keys are salted hashes (`ANON_HASH_SALT`), never raw IPs or emails.
+  - A Redis error lets the request through and is logged, so an outage can't lock everyone out on launch day.
+  - Dev test identities skip both.
+- **D-047 · 2026-11-17 · Auth flow details.**
+  - Magic links use `signInWithOtp`. Their `emailRedirectTo` is `<trusted origin>/auth/callback?next=…`, where the origin is checked against `NEXT_PUBLIC_SITE_HOSTS`, localhost and the Vercel host, else the site URL.
+  - `/auth/callback` accepts `code` (OAuth and the default PKCE email) and `token_hash` + `type`. `next` always goes through `safeNextPath()`, so there are no open redirects.
+  - Google and Discord buttons show only when `/auth/v1/settings` reports them enabled (cached for an hour).
+  - Sign-out runs in the browser, then reloads, so no component keeps a stale session.
+  - Account deletion: the Server Action deletes the account; the browser signs out, leaves a flash cookie and reloads.
+  - Forms submit through `onSubmit` + a transition (`submitWithoutReset`), because React 19's automatic form reset blanks controlled inputs after an error.
+- **D-048 · 2026-11-17 · Dependencies added in Phase 2** (CLAUDE.md "Don'ts").
+  - From the stack: `@supabase/supabase-js` 2.119, `@supabase/ssr` 0.12.7, `@upstash/ratelimit` 2.2.1, `@upstash/redis` 1.41, and the `supabase` CLI 3.1.0 as a devDependency (3.2.0 is out, but pnpm's release-age policy installed 3.1.0).
+  - Outside it:
+    - `@marsidev/react-turnstile` 1.6.3, the Turnstile widget;
+    - `sharp` 0.35.5, a direct dependency for avatar re-encoding (it was already in the tree through Next).
+  - shadcn checkbox, radio-group, switch, textarea, slider and alert-dialog, with their own focus rings removed so the global solid ring applies (D-028).
+- **D-049 · 2026-11-17 · `NEXT_PUBLIC_SUPABASE_URL` must be the bare project URL.** The env schema rejects a path such as `/rest/v1/`, which breaks auth and storage. The DEV value had one; it was fixed in `.env.local`.

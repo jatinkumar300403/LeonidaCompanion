@@ -8,6 +8,9 @@ playwright-report
 test-results
 .playwright-mcp
 public
+src/types/database.ts
+supabase/.temp
+supabase/config.toml
 
 # Kit docs and Markdown stay verbatim (D-002)
 docs

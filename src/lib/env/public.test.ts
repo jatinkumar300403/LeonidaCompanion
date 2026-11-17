@@ -24,6 +24,8 @@ describe("parsePublicEnv", () => {
       siteHosts: ["localhost"],
       showImpressum: false,
       supabaseConfigured: false,
+      supabaseUrl: undefined,
+      supabasePublishableKey: undefined,
       turnstileSiteKey: undefined,
       sentryDsn: undefined,
     });

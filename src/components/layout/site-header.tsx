@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/layout/logo";
 import { NavLink } from "@/components/layout/nav-link";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
+import { UserMenu } from "@/components/layout/user-menu";
 import { mainNav } from "@/config/nav";
 import { integrations } from "@/env";
 import { getFlags } from "@/server/flags";
@@ -11,7 +12,8 @@ import { getFlags } from "@/server/flags";
 /**
  * Sticky header. From `lg` up: logo, main nav, search, theme, sign-in. Below `lg` it collapses to
  * logo + search + sign-in, and the bottom tab bar takes over navigation.
- * Sign in only appears once Supabase is configured (missing integrations hide their feature).
+ * The account slot (Sign in / avatar menu) appears once Supabase is configured; it reads the session
+ * in the browser so the shell stays static.
  */
 export async function SiteHeader() {
   const flags = await getFlags();
@@ -43,11 +45,7 @@ export async function SiteHeader() {
             </Link>
           </Button>
           <ThemeToggle className="hidden lg:inline-flex" />
-          {integrations.supabase ? (
-            <Button asChild variant="secondary" size="sm" className="ml-1">
-              <Link href="/sign-in">Sign in</Link>
-            </Button>
-          ) : null}
+          {integrations.supabase ? <UserMenu /> : null}
         </div>
       </div>
     </header>

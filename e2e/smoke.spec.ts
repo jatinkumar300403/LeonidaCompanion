@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { bottomTabs, footerNav, mainNav, moreNav } from "../src/config/nav";
 import { siteConfig } from "../src/config/site";
+import { createAccount, signInWithMagicLink, supabaseReady } from "./helpers/auth";
 
 /** Phase 1 smoke tests: the shell, navigation, theme and spoilers on mobile and desktop. */
 
@@ -54,7 +55,13 @@ test("the theme follows the system preference", async ({ page }) => {
 });
 
 test("spoilers stay hidden until revealed by keyboard", async ({ page }) => {
-  await page.goto("/admin/ui");
+  // /admin/ui is staff-only since Phase 2 (requireRole("mod")).
+  test.skip(!supabaseReady, "Needs the Supabase DEV keys to sign in as a moderator.");
+  const moderator = await createAccount("mod", "mod");
+  await signInWithMagicLink(page, moderator.email, "/admin/ui");
+  await expect(page).toHaveURL(/\/admin\/ui$/);
+  // The redirect chain lands before the (large) showcase has hydrated; wait for it.
+  await page.waitForLoadState("networkidle");
   const states = page.locator('section[aria-labelledby="states"]');
 
   const inline = states.getByRole("button", { name: "Spoiler, hidden. Activate to reveal." });

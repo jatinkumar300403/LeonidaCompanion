@@ -101,6 +101,16 @@ describe("parseServerEnv", () => {
     ).toThrow(EnvValidationError);
   });
 
+  it("rejects a Supabase URL with a path such as /rest/v1, and accepts a trailing slash", () => {
+    expect(() =>
+      parseServerEnv({ NEXT_PUBLIC_SUPABASE_URL: "https://x.supabase.co/rest/v1/" }, { productionDeploy: false }),
+    ).toThrow(/NEXT_PUBLIC_SUPABASE_URL: must be the project URL/);
+    expect(
+      parseServerEnv({ NEXT_PUBLIC_SUPABASE_URL: "https://x.supabase.co/" }, { productionDeploy: false }).env
+        .NEXT_PUBLIC_SUPABASE_URL,
+    ).toBe("https://x.supabase.co/");
+  });
+
   it("requires the D-023 set on a production deployment", () => {
     expect(() => parseServerEnv({}, { productionDeploy: true })).toThrow(EnvValidationError);
     try {
