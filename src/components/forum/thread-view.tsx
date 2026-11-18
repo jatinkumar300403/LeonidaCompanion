@@ -48,7 +48,15 @@ export function ThreadView({
     ? (thread.posts.find((post) => post.id === thread.acceptedPostId && post.status === "visible") ?? null)
     : null;
   const replies = thread.posts.filter((post) => post.id !== accepted?.id);
-  const visibleReplies = thread.posts.filter((post) => post.status === "visible" && !post.isAi);
+  // Counted under the "replies" heading: the pinned accepted answer sits above it.
+  const otherReplies = replies.filter((post) => post.status === "visible" && !post.isAi).length;
+  const repliesHeading = accepted
+    ? otherReplies === 0
+      ? "No other replies"
+      : `${otherReplies} other ${otherReplies === 1 ? "reply" : "replies"}`
+    : otherReplies === 0
+      ? "No replies yet"
+      : `${otherReplies} ${otherReplies === 1 ? "reply" : "replies"}`;
 
   const isAuthor = Boolean(viewer && thread.authorId === viewer.id);
   const canReply =
@@ -77,7 +85,7 @@ export function ThreadView({
       editedAt: post.editedAt,
       score: post.score,
       myVote: votes.get(`post:${post.id}`) ?? 0,
-      voteMode: voteMode(post.authorId),
+      voteMode: visible ? voteMode(post.authorId) : "static",
       returnTo: `${path}#post-${post.id}`,
       deleted: post.status === "deleted",
       hiddenNote:
@@ -250,9 +258,7 @@ export function ThreadView({
 
         <section aria-labelledby="replies-heading" className="flex flex-col gap-3">
           <h2 id="replies-heading" className="mt-2 text-lg font-semibold">
-            {visibleReplies.length === 0
-              ? "No replies yet"
-              : `${visibleReplies.length} ${visibleReplies.length === 1 ? "reply" : "replies"}`}
+            {repliesHeading}
           </h2>
           {replies.length > 0 ? (
             <ol className="flex flex-col gap-3">

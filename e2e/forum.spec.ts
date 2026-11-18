@@ -23,7 +23,9 @@ test("a question gets a reply, the asker accepts it and the thread shows Solved"
   await expect(page.getByRole("radio", { name: /Help & Questions/ })).toHaveAttribute("aria-checked", "true");
   const main = page.getByRole("main");
   await main.getByLabel("Title").fill(title);
-  await main.getByLabel("Details").fill("I looked through the settings menu but couldn't find the camera speed option.");
+  await main
+    .getByLabel("Details")
+    .fill("I looked through the settings menu but couldn't find the camera speed option.");
   await main.getByRole("button", { name: "Settings", exact: true }).click();
   await main.getByRole("button", { name: "Post thread" }).click();
 
@@ -40,7 +42,9 @@ test("a question gets a reply, the asker accepts it and the thread shows Solved"
   const helperPage = await helperContext.newPage();
   await signInWithMagicLink(helperPage, helper.email, threadPath);
   await expect(helperPage.getByRole("heading", { level: 1 })).toHaveText(title);
-  await helperPage.getByRole("textbox", { name: "Your reply" }).fill("Settings → Controls → Camera: raise the look sensitivity.");
+  await helperPage
+    .getByRole("textbox", { name: "Your reply" })
+    .fill("Settings → Controls → Camera: raise the look sensitivity.");
   await helperPage.getByRole("button", { name: "Post reply" }).click();
   const helperReply = helperPage.getByRole("article", { name: `Reply by @${helper.username}` });
   await expect(helperReply).toContainText("raise the look sensitivity", { timeout: 30_000 });

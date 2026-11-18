@@ -41,10 +41,23 @@ Legend: `[x]` done · `[ ]` to do · ⚡ = cut first if behind. The kit's fallba
     - the breadcrumb truncates on one line on phones;
     - the sort controls wrap as one group;
     - no scrollbars on the tag row and the admin tabs.
-- **Done: Phase 4 (in progress, see below).** Help forum (D-061 to D-069): 1 migration on DEV (edit window, new-account limits and links in the DB, quote replies + `post_reply`, thread mentions, `similar_threads`, `threads.excerpt`), `server/forum` (cached reads, viewer overlay, actions), `/forum`, `/forum/[category]`, `/forum/t/[id]/[slug]`, `/forum/new`, report/block, the header bell, home "Trending" on real data, profile threads + report/block.
-  - Checks: `pnpm typecheck` and `lint` pass; `pnpm test` 464 unit tests; `pnpm test:db` 63 tests (12 new); `e2e/forum.spec.ts` 4/4 (E2E #2 without AI on mobile + desktop).
-  - **Not yet done:** visual QA at 390/1440 in dark and light (only `/forum` and the thread page at 1440 light were checked), the full `pnpm e2e` regression run, and `pnpm format:check` on docs.
-- **Next:** finish Phase 4's visual QA + full E2E run, then Phase 5 (Clips).
+- **Done: Phase 4.**
+  - Help forum (D-061 to D-069):
+    - 1 migration on DEV: the edit window, new-account limits and links enforced in the DB, quote replies + `post_reply`, thread mentions, `similar_threads`, `threads.excerpt`;
+    - `server/forum`: cached reads, the viewer overlay, actions;
+    - `/forum`, `/forum/[category]`, `/forum/t/[id]/[slug]`, `/forum/new`;
+    - report and block, the header notification bell, the home "Trending" block on real threads, and recent threads + report/block on profiles.
+  - Checks:
+    - `pnpm typecheck`, `lint`, `format:check` and `build` pass;
+    - `pnpm test`: 464 unit tests;
+    - `pnpm test:db`: 63 tests (12 new);
+    - `pnpm e2e`: 31 passed, 5 viewport skips, including E2E #2 (without the AI part) on mobile and desktop.
+  - E2E #1 timed out once under full-suite load (about 10 s alone). Its budget is now 60 s.
+  - Visual QA with the Playwright MCP of `/forum`, `/forum/help`, a thread page, `/forum/new` and the bell, at 390 and 1440 in dark and light. Fixes made during the check:
+    - deleted replies no longer show vote arrows;
+    - the replies heading no longer counts the pinned accepted answer.
+  - QA and test data were removed with `pnpm test:cleanup`.
+- **Next:** Phase 5 (Prompt 5, Clips) in a fresh session.
 - **Owner to-dos from Phase 3:**
   - Add `RESEND_API_KEY` and a real `EMAIL_FROM` on a verified domain. Until then newsletter sign-ups work only on DEV (dev outbox, D-054) and stay disabled in production.
   - Optional: `INDEXNOW_KEY` (any 8–128 letters, digits or dashes), so publishing pings Bing.
@@ -71,6 +84,8 @@ Legend: `[x]` done · `[ ]` to do · ⚡ = cut first if behind. The kit's fallba
   - `pnpm seed:dev` prints Node's "module type" warning (the repo has no `"type": "module"`). It is harmless.
   - `next dev` regenerates a managed `AGENTS.md`; it is gitignored (D-060).
   - The OG image uses the default font, not Bricolage Grotesque (Phase 9 can load the font file).
+  - Forum mod tools (remove, lock, move, ban) and the report queue arrive in Phase 6. Phase 4 only inserts reports, and threads and replies post without the AI pre-check until then.
+  - Forum lists and thread pages serve stale data for one request after their 30 s cache expires (stale-while-revalidate, D-064). Rows changed directly in the database show up on the next load.
 
 ## Owner setup (docs/SETUP.md) → needed by
 - [x] Node 24.18 LTS, pnpm 12.21 (corepack, D-003), Git 2.55, Playwright Chromium; `CRON_SECRET` + `ANON_HASH_SALT` in `.env.local`

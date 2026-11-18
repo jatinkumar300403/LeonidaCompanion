@@ -32,7 +32,7 @@ export type PostCardProps = {
   editedAt: string | null;
   score: number;
   myVote: VoteValue;
-  voteMode: "vote" | "own" | "signed-out";
+  voteMode: "vote" | "own" | "static" | "signed-out";
   returnTo: string;
   deleted: boolean;
   /** Only the author (or staff) can see it: held for review or removed. */

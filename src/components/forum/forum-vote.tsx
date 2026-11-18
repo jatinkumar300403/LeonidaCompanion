@@ -26,12 +26,16 @@ export function ForumVote({
   targetId: number;
   score: number;
   myVote: VoteValue;
-  mode: "vote" | "own" | "signed-out";
+  /** "static": score only (your own post, or a deleted one). */
+  mode: "vote" | "own" | "static" | "signed-out";
   returnTo: string;
 }) {
-  if (mode === "own") {
+  if (mode === "own" || mode === "static") {
     return (
-      <div className="flex min-w-12 flex-col items-center text-muted-foreground" title="Your own post">
+      <div
+        className="flex min-w-12 flex-col items-center text-muted-foreground"
+        title={mode === "own" ? "Your own post" : undefined}
+      >
         <ArrowBigUp className="size-5 opacity-40" aria-hidden="true" />
         <span className="font-mono text-sm font-semibold text-foreground tabular-nums">
           <span className="sr-only">Score </span>

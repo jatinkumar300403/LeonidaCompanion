@@ -12,6 +12,8 @@ test.skip(!supabaseReady, "Needs the Supabase DEV keys in .env.local.");
 
 /** SPEC §15 E2E #1: sign up (magic link mocked) → choose username → age checkbox → lands on home. */
 test("sign up with a magic link, choose a username and land on home", async ({ page, request }) => {
+  // About 10 s alone; with the whole suite compiling in parallel it can pass the 30 s default.
+  test.setTimeout(60_000);
   const { email, username } = testIdentity("signup");
 
   await page.goto("/");
