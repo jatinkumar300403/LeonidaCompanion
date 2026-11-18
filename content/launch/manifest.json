@@ -1,0 +1,250 @@
+{
+  "accessedAt": "2026-11-18",
+  "sources": {
+    "release-times": {
+      "title": "Rockstar Support: GTA VI regional pre-load and release times",
+      "url": "https://support.rockstargames.com/articles/29jV3Cv2cCgvwM1XgtMO5o/grand-theft-auto-vi-regional-pre-load-and-release-times-on-playstation-5-and-xbox-series-x-or-s"
+    },
+    "release-date-news": {
+      "title": "Rockstar Newswire: Grand Theft Auto VI is Now Set to Launch November 19, 2026",
+      "url": "https://www.rockstargames.com/newswire/article/ak3ak31a49a221/grand-theft-auto-vi-is-now-set-to-launch-november-19-2026"
+    },
+    "preload-news": {
+      "title": "Rockstar Newswire: Grand Theft Auto VI Pre-Load Begins on November 10",
+      "url": "https://www.rockstargames.com/newswire/article/k4ak9okk485712/grand-theft-auto-vi-pre-load-begins-on-november-10"
+    },
+    "preload-now-news": {
+      "title": "Rockstar Newswire: Pre-Load Grand Theft Auto VI Now",
+      "url": "https://www.rockstargames.com/newswire/article/89834o94713o21/pre-load-grand-theft-auto-vi-now"
+    },
+    "preload-faq": {
+      "title": "Rockstar Support: Grand Theft Auto VI Pre-Load FAQ",
+      "url": "https://support.rockstargames.com/articles/7nPqOA2uCbpEQHXx7KVrYd"
+    },
+    "editions-support": {
+      "title": "Rockstar Support: Grand Theft Auto VI Platforms, Editions, and Versions",
+      "url": "https://support.rockstargames.com/articles/4QfG4FmZCf5W1gS8jy4UVT/grand-theft-auto-vi-platform-editions-and-versions"
+    },
+    "preorder-news": {
+      "title": "Rockstar Newswire: Pre-Order Grand Theft Auto VI on June 25",
+      "url": "https://www.rockstargames.com/newswire/article/5171972o3ak5oa/pre-order-grand-theft-auto-vi-on-june-25"
+    },
+    "radio-news": {
+      "title": "Rockstar Newswire: The Music of Grand Theft Auto VI: In-Game Radio Stations",
+      "url": "https://www.rockstargames.com/newswire/article/o3982oa93a23k4/the-music-of-grand-theft-auto-vi-in-game-radio-stations"
+    },
+    "score-news": {
+      "title": "Rockstar Newswire: Grand Theft Auto VI: Original Score by Justice",
+      "url": "https://www.rockstargames.com/newswire/article/39ak8a12395591/grand-theft-auto-vi-original-score-by-justice"
+    },
+    "only-in-leonida": {
+      "title": "Rockstar Games: Grand Theft Auto VI, Only in Leonida",
+      "url": "https://www.rockstargames.com/VI/only-in-leonida"
+    },
+    "rockstar-store": {
+      "title": "Rockstar Store: Grand Theft Auto VI",
+      "url": "https://store.rockstargames.com/game/buy-gta-vi"
+    }
+  },
+  "articles": [
+    {
+      "file": "facts/release-date-and-time.md",
+      "type": "fact",
+      "slug": "gta-6-release-date-and-time",
+      "title": "GTA 6 Releases at Midnight Local Time on 19 November 2026",
+      "summary": "GTA 6 unlocks at midnight local time on Thursday 19 November 2026, in every region, on PS5 and Xbox Series X|S.",
+      "tags": ["beginner"],
+      "factStatus": "confirmed",
+      "sources": ["release-times", "release-date-news"]
+    },
+    {
+      "file": "facts/preload-storage-212-gb.md",
+      "type": "fact",
+      "slug": "gta-6-preload-needs-up-to-212-gb",
+      "title": "The GTA 6 Pre-Load Needs Up to 212 GB",
+      "summary": "Rockstar says the GTA 6 pre-load needs up to 212 GB of free space, depending on your console.",
+      "tags": ["performance"],
+      "factStatus": "confirmed",
+      "sources": ["preload-news", "preload-faq"]
+    },
+    {
+      "file": "facts/physical-copies-are-code-in-box.md",
+      "type": "fact",
+      "slug": "gta-6-physical-copies-have-no-disc",
+      "title": "Physical Copies of GTA 6 Have No Disc",
+      "summary": "The physical version of GTA 6 is a download code in a box. There's no disc and no physical Ultimate Edition.",
+      "tags": ["beginner"],
+      "factStatus": "confirmed",
+      "sources": ["editions-support"]
+    },
+    {
+      "file": "facts/vintage-vice-city-pack-before-november-20.md",
+      "type": "fact",
+      "slug": "gta-6-vintage-vice-city-pack",
+      "title": "Buy GTA 6 Before 20 November to Get the Vintage Vice City Pack",
+      "summary": "Pre-orders and purchases of GTA 6 before 20 November 2026 include the Vintage Vice City Pack, on either edition.",
+      "tags": ["vehicles"],
+      "factStatus": "confirmed",
+      "sources": ["editions-support", "preorder-news"]
+    },
+    {
+      "file": "facts/30-fps-target-and-ps5-pro-features.md",
+      "type": "fact",
+      "slug": "gta-6-targets-30-fps",
+      "title": "GTA 6 Targets 30 FPS, With Extra Visuals on PS5 Pro",
+      "summary": "GTA 6 targets 30 fps on PS5 and Xbox Series X|S. PS5 Pro adds PSSR image quality and ray-traced shadows.",
+      "tags": ["performance"],
+      "factStatus": "confirmed",
+      "sources": ["preload-now-news"]
+    },
+    {
+      "file": "facts/xbox-cloud-gaming-and-remote-play.md",
+      "type": "fact",
+      "slug": "gta-6-xbox-cloud-gaming-and-remote-play",
+      "title": "GTA 6 Supports Xbox Cloud Gaming and Remote Play",
+      "summary": "GTA 6 is playable through Xbox Cloud Gaming, including on Xbox One, and supports Remote Play on PlayStation and Xbox.",
+      "tags": ["performance"],
+      "factStatus": "confirmed",
+      "sources": ["preload-now-news"]
+    },
+    {
+      "file": "facts/six-radio-stations-revealed.md",
+      "type": "fact",
+      "slug": "gta-6-radio-stations-revealed",
+      "title": "Six GTA 6 Radio Stations Revealed So Far",
+      "summary": "Rockstar has named six GTA 6 radio stations: Cocoteo FM, Back Country Radio, AfroBank FM, The Chamber 106.6, Flash FM and Dirty South Classics.",
+      "tags": ["activities"],
+      "factStatus": "confirmed",
+      "sources": ["radio-news"]
+    },
+    {
+      "file": "facts/original-score-by-justice.md",
+      "type": "fact",
+      "slug": "gta-6-original-score-by-justice",
+      "title": "GTA 6's Original Score Is by Justice",
+      "summary": "French duo Justice composed GTA 6's adaptive score. A 30-track score album follows on 11 December 2026.",
+      "tags": ["activities"],
+      "factStatus": "confirmed",
+      "sources": ["score-news"]
+    },
+    {
+      "file": "facts/free-poster-and-leonida-map.md",
+      "type": "fact",
+      "slug": "gta-6-free-poster-and-leonida-map",
+      "title": "A Free GTA 6 Poster and Map of Leonida Arrive on Launch Day",
+      "summary": "On 19 November 2026, Rockstar adds a free printable GTA 6 cover poster and map of Leonida to the official site.",
+      "tags": ["map"],
+      "factStatus": "confirmed",
+      "sources": ["preload-news"]
+    },
+    {
+      "file": "facts/jason-and-lucia-in-leonida.md",
+      "type": "fact",
+      "slug": "gta-6-jason-and-lucia-in-leonida",
+      "title": "GTA 6 Stars Jason and Lucia in the State of Leonida",
+      "summary": "GTA 6 follows Jason Duval and Lucia Caminos in the fictional state of Leonida, home to a modern-day Vice City.",
+      "tags": ["characters", "map"],
+      "factStatus": "confirmed",
+      "sources": ["only-in-leonida", "release-date-news"]
+    },
+    {
+      "file": "features/radio-and-podcasts.md",
+      "type": "feature",
+      "slug": "how-radio-and-podcasts-work-in-gta-6",
+      "title": "How Radio and Podcasts Work in GTA 6",
+      "summary": "GTA 6 radio works on foot through headphones on your phone, and the game adds on-demand podcasts for the first time.",
+      "tags": ["activities"],
+      "sources": ["radio-news"]
+    },
+    {
+      "file": "features/adaptive-score.md",
+      "type": "feature",
+      "slug": "gta-6-adaptive-score-explained",
+      "title": "GTA 6's Adaptive Score by Justice Explained",
+      "summary": "GTA 6's score by Justice adapts to how you play. Here's what Rockstar has confirmed, and what it hasn't yet.",
+      "tags": ["activities"],
+      "sources": ["score-news"]
+    },
+    {
+      "file": "features/ultimate-edition-items.md",
+      "type": "feature",
+      "slug": "how-ultimate-edition-items-unlock-in-gta-6",
+      "title": "How Ultimate Edition Items Unlock in GTA 6",
+      "summary": "GTA 6's Ultimate Edition items are spread across the story's chapters, and Standard owners can upgrade at any time.",
+      "tags": ["vehicles", "weapons"],
+      "sources": ["editions-support", "preorder-news"]
+    },
+    {
+      "file": "features/ps5-and-ps5-pro-features.md",
+      "type": "feature",
+      "slug": "gta-6-ps5-and-ps5-pro-features-explained",
+      "title": "GTA 6 on PS5 and PS5 Pro: Haptics, 3D Audio and Graphics Explained",
+      "summary": "GTA 6 targets 30 fps. PS5 adds adjustable haptics and 3D audio; PS5 Pro adds PSSR and ray-traced shadows.",
+      "tags": ["performance", "accessibility", "settings"],
+      "sources": ["preload-now-news"]
+    },
+    {
+      "file": "features/cloud-gaming-and-remote-play.md",
+      "type": "feature",
+      "slug": "gta-6-cloud-gaming-and-remote-play-explained",
+      "title": "GTA 6 Cloud Gaming and Remote Play Explained",
+      "summary": "Play GTA 6 through Xbox Cloud Gaming, including on Xbox One, or stream from your own console with Remote Play.",
+      "tags": ["performance"],
+      "sources": ["preload-now-news"]
+    },
+    {
+      "file": "features/state-of-leonida-regions.md",
+      "type": "feature",
+      "slug": "gta-6-state-of-leonida-explained",
+      "title": "The State of Leonida Explained: GTA 6's Regions So Far",
+      "summary": "GTA 6 is set in Leonida. Rockstar has shown six areas so far: Vice City, Leonida Keys, Grassrivers, Port Gellhorn, Ambrosia and Mount Kalaga.",
+      "tags": ["map"],
+      "sources": ["only-in-leonida", "release-date-news", "preload-news", "radio-news"]
+    },
+    {
+      "file": "tips/preload-automatically.md",
+      "type": "tip",
+      "slug": "how-to-preload-gta-6-automatically",
+      "title": "How to Pre-Load GTA 6 Automatically Before Launch",
+      "summary": "Turn on auto-downloads and leave your console in rest or sleep mode, so GTA 6 is ready at midnight.",
+      "tags": ["beginner", "settings"],
+      "sources": ["preload-faq", "release-times"]
+    },
+    {
+      "file": "tips/make-room-for-212-gb.md",
+      "type": "tip",
+      "slug": "how-to-make-room-for-gta-6",
+      "title": "How to Make Room for GTA 6's 212 GB Pre-Load",
+      "summary": "Free up at least 212 GB before pre-loading GTA 6, plus some headroom for day-one updates.",
+      "tags": ["beginner", "performance"],
+      "sources": ["preload-news"]
+    },
+    {
+      "file": "tips/check-haptics-and-accessibility.md",
+      "type": "tip",
+      "slug": "how-to-find-gta-6-haptics-and-accessibility-options",
+      "title": "How to Find GTA 6's Haptics and Accessibility Options",
+      "summary": "Open GTA 6's accessibility settings first: Rockstar says PS5 haptic feedback can be adjusted there.",
+      "tags": ["accessibility", "settings"],
+      "sources": ["preload-now-news"]
+    },
+    {
+      "file": "tips/set-up-screen-and-sound.md",
+      "type": "tip",
+      "slug": "how-to-set-up-screen-and-sound-for-gta-6",
+      "title": "How to Set Up Your Screen and Sound Before Playing GTA 6",
+      "summary": "Calibrate brightness, turn on game mode and use headphones for 3D audio before your first GTA 6 session.",
+      "tags": ["settings", "beginner"],
+      "sources": ["preload-now-news"]
+    },
+    {
+      "file": "tips/good-saving-habits.md",
+      "type": "tip",
+      "slug": "how-to-save-safely-in-gta-6",
+      "title": "How to Avoid Losing Progress in GTA 6 With Good Saving Habits",
+      "summary": "Don't rely on autosave alone: save manually before big jobs, keep a second slot and never quit while saving.",
+      "tags": ["beginner"],
+      "sources": []
+    }
+  ]
+}

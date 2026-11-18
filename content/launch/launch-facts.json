@@ -1,0 +1,38 @@
+{
+  "release_at": null,
+  "release_note": "Midnight local time on Thursday 19 November 2026, in every region, on PlayStation 5 and Xbox Series X|S.",
+  "release_source_url": "https://support.rockstargames.com/articles/29jV3Cv2cCgvwM1XgtMO5o/grand-theft-auto-vi-regional-pre-load-and-release-times-on-playstation-5-and-xbox-series-x-or-s",
+  "platforms": [
+    {
+      "name": "PlayStation 5",
+      "source_url": "https://support.rockstargames.com/articles/4QfG4FmZCf5W1gS8jy4UVT/grand-theft-auto-vi-platform-editions-and-versions"
+    },
+    {
+      "name": "Xbox Series X|S",
+      "source_url": "https://support.rockstargames.com/articles/4QfG4FmZCf5W1gS8jy4UVT/grand-theft-auto-vi-platform-editions-and-versions"
+    }
+  ],
+  "editions": [
+    {
+      "name": "Standard Edition",
+      "price": "$79.99 (US Rockstar Store)",
+      "contents": "The game, digital or code-in-box (no disc). Pre-orders and purchases before 20 Nov 2026 add the Vintage Vice City Pack; digital ones also add a free month of GTA+. Upgrade to Ultimate any time.",
+      "source_url": "https://store.rockstargames.com/game/buy-gta-vi"
+    },
+    {
+      "name": "Ultimate Edition",
+      "price": "See PlayStation/Xbox store",
+      "contents": "Digital only. The game plus the Ultimate Edition Upgrade: vehicles, weapons, outfits, businesses and properties that unlock across the story's chapters. Same pre-order bonuses as Standard.",
+      "source_url": "https://support.rockstargames.com/articles/4QfG4FmZCf5W1gS8jy4UVT/grand-theft-auto-vi-platform-editions-and-versions"
+    }
+  ],
+  "preload": {
+    "text": "PS5: from midnight local time on 10 Nov 2026. Xbox Series X|S: from 12 a.m. GMT on 10 Nov 2026. Code-in-box buyers can pre-load once the code is redeemed.",
+    "starts_at": "2026-11-10",
+    "source_url": "https://support.rockstargames.com/articles/7nPqOA2uCbpEQHXx7KVrYd"
+  },
+  "download_size": {
+    "value": "Up to 212 GB (varies by console)",
+    "source_url": "https://www.rockstargames.com/newswire/article/k4ak9okk485712/grand-theft-auto-vi-pre-load-begins-on-november-10"
+  }
+}
