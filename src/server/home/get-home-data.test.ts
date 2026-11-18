@@ -14,6 +14,7 @@ const latest = vi.hoisted(() => ({ tips: [] as ArticleListItem[] }));
 vi.mock("@/server/articles/queries", () => ({
   getLatestArticles: async (type: string) => (type === "tip" ? latest.tips : []),
 }));
+vi.mock("@/server/forum/queries", () => ({ getHotThreads: async () => [] }));
 
 describe("getHomeData", () => {
   it("never serves sample data outside development", async () => {

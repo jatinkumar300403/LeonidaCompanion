@@ -41,7 +41,10 @@ Legend: `[x]` done · `[ ]` to do · ⚡ = cut first if behind. The kit's fallba
     - the breadcrumb truncates on one line on phones;
     - the sort controls wrap as one group;
     - no scrollbars on the tag row and the admin tabs.
-- **Next:** Phase 4 (Prompt 4, Help Forum) in a fresh session.
+- **Done: Phase 4 (in progress, see below).** Help forum (D-061 to D-069): 1 migration on DEV (edit window, new-account limits and links in the DB, quote replies + `post_reply`, thread mentions, `similar_threads`, `threads.excerpt`), `server/forum` (cached reads, viewer overlay, actions), `/forum`, `/forum/[category]`, `/forum/t/[id]/[slug]`, `/forum/new`, report/block, the header bell, home "Trending" on real data, profile threads + report/block.
+  - Checks: `pnpm typecheck` and `lint` pass; `pnpm test` 464 unit tests; `pnpm test:db` 63 tests (12 new); `e2e/forum.spec.ts` 4/4 (E2E #2 without AI on mobile + desktop).
+  - **Not yet done:** visual QA at 390/1440 in dark and light (only `/forum` and the thread page at 1440 light were checked), the full `pnpm e2e` regression run, and `pnpm format:check` on docs.
+- **Next:** finish Phase 4's visual QA + full E2E run, then Phase 5 (Clips).
 - **Owner to-dos from Phase 3:**
   - Add `RESEND_API_KEY` and a real `EMAIL_FROM` on a verified domain. Until then newsletter sign-ups work only on DEV (dev outbox, D-054) and stay disabled in production.
   - Optional: `INDEXNOW_KEY` (any 8–128 letters, digits or dashes), so publishing pings Bing.
@@ -103,9 +106,9 @@ Legend: `[x]` done · `[ ]` to do · ⚡ = cut first if behind. The kit's fallba
 - [x] Dev-only `[SAMPLE]` drafts (`scripts/seed-dev.ts`); E2E #6, #7
 
 ### 4 · Help Forum · §5 (AI answer comes in Phase 8) · Prompt 4
-- [ ] `server/forum`: threads/posts (30-min edit, soft delete), votes, hot rank SQL, sorts (D-017), accept → solved, mentions, quote, reputation, new-account limits, links at rep ≥ 20
-- [ ] /forum, /forum/[category], /forum/t/[id]/[slug], /forum/new (trigram "similar threads"); Online category gated by flag
-- [ ] Turnstile + rate limits on every write; block; report dialog; QAPage / DiscussionForumPosting; noindex; bell; `onThreadCreated()` hook; E2E #2 (without AI)
+- [x] `server/forum`: threads/posts (30-min edit, soft delete, D-061), votes, hot rank SQL, sorts (D-017, D-064), accept → solved, mentions, quote (D-065), reputation, new-account limits + links at rep ≥ 20 in the DB (D-062)
+- [x] /forum, /forum/[category], /forum/t/[id]/[slug], /forum/new (trigram "similar threads", D-068); Online category gated by flag (D-066)
+- [x] Turnstile + rate limits on writes (D-063); block; report dialog; QAPage / DiscussionForumPosting; noindex (D-067); bell; `onThreadCreated()` hook; E2E #2 (without AI)
 
 ### 5 · Clips · §6 · Prompt 5
 - [ ] `resolveClip` (both Twitch URL shapes; YouTube watch, youtu.be, shorts; TikTok oEmbed) + fixtures; Twitch token in Redis; GTA VI game-id check; embeddable + ≤ 60 s

@@ -12,7 +12,7 @@ export const sanitizeSchema: Options = {
     ...defaultSchema.attributes,
     a: [
       ...(defaultSchema.attributes?.a ?? []).filter((def) => !(Array.isArray(def) && def[0] === "className")),
-      ["className", "data-footnote-backref", "citation-chip"],
+      ["className", "data-footnote-backref", "citation-chip", "mention"],
     ],
     div: [
       ...(defaultSchema.attributes?.div ?? []),

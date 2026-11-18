@@ -248,3 +248,69 @@ Context7 wasn't connected in this session (D-001), so look an API up in Context7
   - Onboarding now skips rate limits and Turnstile for dev test identities, as D-046 intended; E2E #1 failed once real Turnstile keys were added.
   - **Dependencies added:** `resend` 6.38 (in the stack) and `github-slugger` 2.0 (already in the tree through rehype-slug).
   - **Deferred:** `view_count` (needs a non-cached write), embedding similarity in "Related" (Phase 7), unsubscribe links (Phase 12).
+
+### Phase 4 (2026-11-18)
+
+- **D-061 · 2026-11-18 · Edit window and deleting.**
+  - Authors can edit a thread (title, body, tags, spoiler flag) or a reply for 30 minutes after posting. Every edit shows "edited". Mods can edit at any time.
+  - SPEC §5's "later edits show edited" is read as "edits are marked", and "edit within 30 min" as the window. This settles D-039's open point.
+  - The database guards enforce the window too (`edit_window_closed`), so the API can't get around it.
+  - Deleting is allowed at any time:
+    - A reply soft-deletes (`[deleted]`, it stops counting).
+    - A thread with no replies is hard-deleted (the Phase 2 RLS rule).
+    - A thread with replies keeps its title and replies, and its question becomes `[deleted]`.
+- **D-062 · 2026-11-18 · New-account limits and links live in the database.**
+  - The API is reachable directly with a user's JWT, so server-side checks alone can't hold. Before-insert triggers on threads and posts apply SPEC §5 to API users. Staff and the service role are exempt.
+  - **Limits:**
+    - "New" means an account younger than 24 h or with reputation under 5.
+    - New accounts get 3 threads and 20 replies per rolling 24 h, counted in any status, so deleting doesn't reset them.
+    - Links need reputation ≥ 20 and an account at least a day old, on insert and on edit.
+  - "Link" means anything markdown renders as one: `http(s)://`, `www.`, `](`, `<scheme:` and reference definitions.
+  - `containsLink()` in TS mirrors `private.contains_link()`, and a DB test compares the two on the same inputs. The TS copy only drives the composer hint and friendlier messages.
+  - DB test users are "established" by default (2 days old, reputation 20). `{ fresh: true }` gives a new account.
+- **D-063 · 2026-11-18 · Turnstile and rate limits on forum writes.**
+  - **Turnstile** guards new threads and replies, the public writes CLAUDE.md lists. The widget mounts on first focus, and the reply box re-mounts it after each reply because a token works once.
+  - Votes, edits, deletes, accept, reports, blocks and mark-read are signed-in actions with Upstash limits only. A challenge per click would break optimistic voting.
+  - **Limits** are per user, per hour unless noted:
+    - threads 10 (30 at rep ≥ 100);
+    - replies 60 (200 at rep ≥ 100);
+    - 120 thread-or-reply writes per IP;
+    - edits 60, deletes 30, votes 300, accepts 30, reports 10, blocks 30;
+    - similar-threads lookups 60 a minute per IP;
+    - mark-read 120.
+  - SPEC's "no rate-limit warning at rep ≥ 100" became that bigger tier.
+  - Dev test identities skip both checks (D-046, D-060). The DB limits still apply to them.
+- **D-064 · 2026-11-18 · Forum rendering, caching and lists.**
+  - Forum pages render per request (they read the session).
+  - Public data is read as `anon` and cached with `unstable_cache`:
+    - categories with counts (`threads(count)`, RLS-filtered) and every list sit under the tag `forum`;
+    - each thread sits under `thread:<id>`;
+    - revalidate is 30 s (60 s for categories).
+  - Server Actions call `updateTag` on both tags, so the writer sees the change at once. Votes update only the thread's tag.
+  - Per-viewer data is read live on top: blocks, own votes, own held or removed replies. Staff, and the author of a held or removed thread, read the thread live under RLS.
+  - **Lists:**
+    - Sorts: Hot (`hot_threads`), New, Top (today / week / all, default week) and Unanswered.
+    - Unanswered (D-017) means `status = 'open'` and either no replies, or a Q&A thread older than 24 h.
+    - Offset pages via `?page=` (20 a page, max 50) are real links. Page 2+ is `noindex, follow`, and sorted views canonicalise to the category.
+    - `/forum?sort=…` lists every category (the home page's "Unanswered" link). Plain `/forum` is the landing page.
+  - Lists read a generated `threads.excerpt` (first 280 characters), so they never fetch full bodies.
+  - A thread URL with an old or wrong slug redirects to the current one. The slug follows the title when it is edited.
+- **D-065 · 2026-11-18 · Quote replies and notifications.**
+  - A quote reply stores `posts.reply_to_post_id`, which must point at a post in the same thread.
+  - Each new visible reply notifies each person at most once, in this order: the quoted author (`post_reply`, SPEC §9's "reply to my post"), the thread author (`thread_reply`), then mentions.
+  - Mentions in a new thread's question notify too. Blocks are respected everywhere, and payloads now carry `thread_slug`.
+  - The header bell reads the user's own notifications in the browser under RLS, so cached pages stay static. It refreshes on open and every 60 s while the tab is visible, and marks rows read through a rate-limited Server Action. The account slot widened to 5.25 rem so the header doesn't shift.
+- **D-066 · 2026-11-18 · Spoilers, categories and answers.**
+  - **Missions & Story** (`spoilers_allowed`): threads there are always `is_spoiler`, and the question and every reply render inside a spoiler block.
+  - **`is_spoiler`** elsewhere hides the question behind a spoiler block and blurs the list excerpt. Spoiler threads get a generic meta description.
+  - **Online** is read-only while `is_locked`, or while `FEATURE_ONLINE` is off (D-018). Mods can still post.
+  - **Accept** is offered only in Q&A categories, to the asker or a mod, and can be undone. The accepted answer is pinned under the question and left out of the reply list.
+  - `onThreadCreated()` (`src/server/forum/hooks.ts`) is the Phase 8 hook for AI suggested answers. `enqueueForumSolutionEmbedding()` and `removeForumSolutionEmbedding()` are Phase 7 stubs (D-021). Both run in `after()`.
+- **D-067 · 2026-11-18 · Blocks, reports, SEO.**
+  - Threads by people you blocked are left out of your lists. Their replies collapse to "You blocked @x. Show anyway".
+  - Block and unblock live in each post's menu and on profiles. Reports cover threads, posts and profiles, with SPEC §5's reasons mapped to the table's values (e.g. "Spoiler without a tag" → `spoiler`). They only insert rows; the queue is Phase 6.
+  - **JSON-LD:** QAPage for Q&A threads with an accepted answer, DiscussionForumPosting otherwise, plus BreadcrumbList. Deleted authors become "Deleted user".
+  - **noindex:** thin threads (D-017), deleted questions, `/forum/new`, and held threads (only their author or staff can load them).
+  - `@username` in forum markdown links to the profile through the `remark-mentions` plugin (MarkdownRenderer `mentions` prop; the sanitizer allows the `mention` class).
+- **D-068 · 2026-11-18 · "Similar threads".** `public.similar_threads()` uses the trigram operators `%`, `<%` and `%>` on titles, with thresholds lowered on the function (0.2 / 0.4) so the existing GIN index still serves it. It runs as the caller, so held and removed threads never show. `/forum/new` asks `GET /api/forum/similar` 350 ms after typing stops (6+ characters).
+- **D-069 · 2026-11-18 · Phase 4 dependencies.** None added. The bell, menus and dialogs reuse the shadcn components already installed.

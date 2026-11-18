@@ -6,6 +6,7 @@ import { ClipEmbed } from "@/components/clips/clip-embed";
 import { InlineSpoiler, SpoilerBlock } from "@/components/shared/spoiler";
 import { remarkCallouts } from "@/lib/markdown/remark-callouts";
 import { remarkCitations } from "@/lib/markdown/remark-citations";
+import { remarkMentions } from "@/lib/markdown/remark-mentions";
 import { remarkSpoiler } from "@/lib/markdown/remark-spoiler";
 import { remarkYoutube, YOUTUBE_ID } from "@/lib/markdown/remark-youtube";
 import { sanitizeSchema } from "@/lib/markdown/sanitize-schema";
@@ -85,6 +86,7 @@ export function MarkdownRenderer({
   size = "lg",
   citations = 0,
   youtube = false,
+  mentions = false,
   className,
 }: {
   source: string;
@@ -94,10 +96,13 @@ export function MarkdownRenderer({
   citations?: number;
   /** Articles only: `::youtube[id]` lines become click-to-load embeds (SPEC §4). */
   youtube?: boolean;
+  /** Forum posts: `@username` links to the profile (SPEC §5). */
+  mentions?: boolean;
   className?: string;
 }) {
   const remarkPlugins: NonNullable<Options["remarkPlugins"]> = [remarkGfm, remarkCallouts, remarkSpoiler];
   if (youtube) remarkPlugins.push(remarkYoutube);
+  if (mentions) remarkPlugins.push(remarkMentions);
   if (citations > 0) remarkPlugins.push([remarkCitations, { max: citations }]);
 
   return (

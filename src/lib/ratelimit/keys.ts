@@ -22,6 +22,20 @@ export const RATE_LIMITS = {
   newsletterIp: { limit: 5, window: "1 h" },
   newsletterEmail: { limit: 3, window: "1 d" },
   newsletterConfirm: { limit: 20, window: "1 h" },
+  // Forum (Phase 4, D-063). Reputation ≥ 100 gets the "Trusted" tier for threads and replies.
+  forumThread: { limit: 10, window: "1 h" },
+  forumThreadTrusted: { limit: 30, window: "1 h" },
+  forumPost: { limit: 60, window: "1 h" },
+  forumPostTrusted: { limit: 200, window: "1 h" },
+  forumWriteIp: { limit: 120, window: "1 h" },
+  forumEdit: { limit: 60, window: "1 h" },
+  forumDelete: { limit: 30, window: "1 h" },
+  forumVote: { limit: 300, window: "1 h" },
+  forumAccept: { limit: 30, window: "1 h" },
+  forumReport: { limit: 10, window: "1 h" },
+  forumBlock: { limit: 30, window: "1 h" },
+  forumSimilarIp: { limit: 60, window: "1 m" },
+  notificationsRead: { limit: 120, window: "1 h" },
 } as const satisfies Record<string, { limit: number; window: `${number} ${"s" | "m" | "h" | "d"}` }>;
 
 export type RateLimitScope = keyof typeof RATE_LIMITS;

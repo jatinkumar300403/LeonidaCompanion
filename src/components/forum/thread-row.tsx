@@ -32,6 +32,18 @@ export function ThreadRow({ thread, now, className }: { thread: ThreadSummary; n
             {thread.title}
           </Link>
         </h3>
+        {thread.excerpt ? (
+          thread.isSpoiler ? (
+            <p className="mt-1 line-clamp-1 text-sm text-muted-foreground">
+              <span className="sr-only">Preview hidden: this thread has spoilers.</span>
+              <span aria-hidden="true" className="blur-[5px] select-none">
+                {thread.excerpt}
+              </span>
+            </p>
+          ) : (
+            <p className="mt-1 line-clamp-2 text-sm text-muted-foreground sm:line-clamp-1">{thread.excerpt}</p>
+          )
+        ) : null}
         <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1.5 text-xs text-muted-foreground">
           <Badge variant="tag" size="sm">
             {thread.category.name}

@@ -54,6 +54,8 @@ export type ThreadSummary = {
   isSpoiler: boolean;
   isLocked: boolean;
   lastActivityAt: string;
+  /** Plain-text start of the question (blurred in lists when isSpoiler). */
+  excerpt?: string;
 };
 
 export type ClipPlatform = "twitch" | "youtube" | "tiktok";

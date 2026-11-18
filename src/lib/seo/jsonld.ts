@@ -76,6 +76,130 @@ export function articleJsonLd({
   } as const;
 }
 
+/** A forum author; deleted accounts still need a name for the structured data. */
+export type ForumPerson = { name: string; url?: string | null };
+
+export type ForumAnswerLd = {
+  text: string;
+  url: string;
+  dateCreated: string;
+  upvoteCount: number;
+  author: ForumPerson;
+};
+
+function person(author: ForumPerson) {
+  return { "@type": "Person", name: author.name, ...(author.url ? { url: author.url } : {}) } as const;
+}
+
+function answer(item: ForumAnswerLd) {
+  return {
+    "@type": "Answer",
+    text: item.text,
+    url: item.url,
+    dateCreated: item.dateCreated,
+    upvoteCount: item.upvoteCount,
+    author: person(item.author),
+  } as const;
+}
+
+/** SPEC §5/§13: Help & Questions threads with an accepted answer. */
+export function qaPageJsonLd({
+  title,
+  text,
+  url,
+  dateCreated,
+  upvoteCount,
+  answerCount,
+  author,
+  accepted,
+  suggested,
+}: {
+  title: string;
+  text: string;
+  url: string;
+  dateCreated: string;
+  upvoteCount: number;
+  answerCount: number;
+  author: ForumPerson;
+  accepted: ForumAnswerLd;
+  suggested: readonly ForumAnswerLd[];
+}) {
+  return {
+    "@context": "https://schema.org",
+    "@type": "QAPage",
+    mainEntity: {
+      "@type": "Question",
+      name: title,
+      text,
+      url,
+      dateCreated,
+      upvoteCount,
+      answerCount,
+      author: person(author),
+      acceptedAnswer: answer(accepted),
+      ...(suggested.length > 0 ? { suggestedAnswer: suggested.map(answer) } : {}),
+    },
+  } as const;
+}
+
+/** SPEC §13: every other thread. */
+export function discussionForumPostingJsonLd({
+  title,
+  text,
+  url,
+  datePublished,
+  dateModified,
+  author,
+  commentCount,
+  upvoteCount,
+  comments,
+}: {
+  title: string;
+  text: string;
+  url: string;
+  datePublished: string;
+  dateModified?: string | null;
+  author: ForumPerson;
+  commentCount: number;
+  upvoteCount: number;
+  comments: readonly { text: string; url: string; datePublished: string; author: ForumPerson }[];
+}) {
+  return {
+    "@context": "https://schema.org",
+    "@type": "DiscussionForumPosting",
+    headline: title.slice(0, 110),
+    text,
+    url,
+    mainEntityOfPage: url,
+    datePublished,
+    ...(dateModified ? { dateModified } : {}),
+    author: person(author),
+    interactionStatistic: [
+      {
+        "@type": "InteractionCounter",
+        interactionType: "https://schema.org/CommentAction",
+        userInteractionCount: commentCount,
+      },
+      {
+        "@type": "InteractionCounter",
+        interactionType: "https://schema.org/LikeAction",
+        userInteractionCount: upvoteCount,
+      },
+    ],
+    ...(comments.length > 0
+      ? {
+          comment: comments.map((comment) => ({
+            "@type": "Comment",
+            text: comment.text,
+            url: comment.url,
+            datePublished: comment.datePublished,
+            author: person(comment.author),
+          })),
+        }
+      : {}),
+  } as const;
+}
+
 export function faqJsonLd(items: readonly { question: string; answer: string }[]) {
   return {
     "@context": "https://schema.org",

@@ -18,6 +18,7 @@ import { useRef } from "react";
 import { MarkdownRenderer } from "@/components/shared/markdown-renderer";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
+import { cn } from "@/lib/utils";
 
 /**
  * MarkdownEditor (SPEC §2): a plain textarea with a toolbar and a live preview tab. Mobile-friendly:
@@ -67,6 +68,9 @@ export function MarkdownEditor({
   invalid,
   describedBy,
   youtube = true,
+  mentions = false,
+  compact = false,
+  label,
 }: {
   id: string;
   value: string;
@@ -76,6 +80,12 @@ export function MarkdownEditor({
   invalid?: boolean;
   describedBy?: string;
   youtube?: boolean;
+  /** Forum posts: preview `@username` as profile links. */
+  mentions?: boolean;
+  /** Shorter box for replies and inline edits. */
+  compact?: boolean;
+  /** Accessible name when there is no visible <label for={id}>. */
+  label?: string;
 }) {
   const ref = useRef<HTMLTextAreaElement>(null);
 
@@ -135,13 +145,17 @@ export function MarkdownEditor({
           placeholder={placeholder}
           aria-invalid={invalid || undefined}
           aria-describedby={describedBy}
-          className="min-h-72 rounded-t-none font-mono text-sm leading-relaxed"
+          aria-label={label}
+          className={cn(
+            "rounded-t-none font-mono text-sm leading-relaxed",
+            compact ? "min-h-36 sm:min-h-44" : "min-h-72",
+          )}
         />
       </TabsContent>
       <TabsContent value="preview" className="mt-2">
-        <div className="min-h-72 rounded-[10px] border bg-card p-4 sm:p-6">
+        <div className={cn("rounded-[10px] border bg-card p-4 sm:p-6", compact ? "min-h-36 sm:min-h-44" : "min-h-72")}>
           {value.trim() ? (
-            <MarkdownRenderer source={value} youtube={youtube} />
+            <MarkdownRenderer source={value} youtube={youtube} mentions={mentions} size={compact ? "sm" : "lg"} />
           ) : (
             <p className="text-sm text-muted-foreground">Nothing to preview yet.</p>
           )}

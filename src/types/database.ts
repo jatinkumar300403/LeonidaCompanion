@@ -582,6 +582,7 @@ export type Database = {
           edited_at: string | null
           id: number
           is_ai: boolean
+          reply_to_post_id: number | null
           score: number
           status: string
           thread_id: number
@@ -594,6 +595,7 @@ export type Database = {
           edited_at?: string | null
           id?: never
           is_ai?: boolean
+          reply_to_post_id?: number | null
           score?: number
           status?: string
           thread_id: number
@@ -606,6 +608,7 @@ export type Database = {
           edited_at?: string | null
           id?: never
           is_ai?: boolean
+          reply_to_post_id?: number | null
           score?: number
           status?: string
           thread_id?: number
@@ -623,6 +626,13 @@ export type Database = {
             columns: ["author_id"]
             isOneToOne: false
             referencedRelation: "public_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "posts_reply_to_post_id_fkey"
+            columns: ["reply_to_post_id"]
+            isOneToOne: false
+            referencedRelation: "posts"
             referencedColumns: ["id"]
           },
           {
@@ -795,6 +805,7 @@ export type Database = {
           category_id: number
           created_at: string
           edited_at: string | null
+          excerpt: string | null
           id: number
           is_spoiler: boolean
           last_activity_at: string
@@ -813,6 +824,7 @@ export type Database = {
           category_id: number
           created_at?: string
           edited_at?: string | null
+          excerpt?: string | null
           id?: never
           is_spoiler?: boolean
           last_activity_at?: string
@@ -831,6 +843,7 @@ export type Database = {
           category_id?: number
           created_at?: string
           edited_at?: string | null
+          excerpt?: string | null
           id?: never
           is_spoiler?: boolean
           last_activity_at?: string
@@ -1023,6 +1036,7 @@ export type Database = {
           category_id: number
           created_at: string
           edited_at: string | null
+          excerpt: string | null
           id: number
           is_spoiler: boolean
           last_activity_at: string
@@ -1078,6 +1092,17 @@ export type Database = {
         }[]
       }
       set_seed_admin: { Args: { p_email: string }; Returns: boolean }
+      similar_threads: {
+        Args: { p_limit?: number; p_query: string }
+        Returns: {
+          id: number
+          reply_count: number
+          similarity: number
+          slug: string
+          status: string
+          title: string
+        }[]
+      }
     }
     Enums: {
       [_ in never]: never

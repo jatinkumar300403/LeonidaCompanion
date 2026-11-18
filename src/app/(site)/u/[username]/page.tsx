@@ -10,7 +10,12 @@ import { platformLabel, ROLE_LABELS } from "@/config/auth";
 import { formatCount } from "@/lib/format";
 import { routes } from "@/lib/routes";
 import { buildMetadata } from "@/lib/seo/metadata";
+import { ProfileSafety } from "@/components/forum/profile-safety";
 import { getSession } from "@/server/auth/session";
+import { getUserThreads } from "@/server/forum/queries";
+import { getForumViewer } from "@/server/forum/viewer";
+import { ThreadRow } from "@/components/forum/thread-row";
+import { Card } from "@/components/ui/card";
 import { getPublicProfile } from "@/server/profiles/queries";
 
 export async function generateMetadata({ params }: PageProps<"/u/[username]">): Promise<Metadata> {
@@ -37,6 +42,7 @@ export default async function ProfilePage({ params }: PageProps<"/u/[username]">
 
   const session = await getSession();
   const isOwn = session?.userId === profile.id;
+  const [viewer, threads] = await Promise.all([isOwn ? null : getForumViewer(), getUserThreads(profile.id)]);
   const platform = platformLabel(profile.platform);
   const stats = [
     { label: "Reputation", value: profile.reputation },
@@ -89,6 +95,12 @@ export default async function ProfilePage({ params }: PageProps<"/u/[username]">
                 Edit profile
               </Link>
             </Button>
+          ) : session?.profile && !session.profile.banned ? (
+            <ProfileSafety
+              userId={profile.id}
+              username={profile.username}
+              blocked={viewer?.blocked.has(profile.id) ?? false}
+            />
           ) : null}
         </div>
 
@@ -106,14 +118,33 @@ export default async function ProfilePage({ params }: PageProps<"/u/[username]">
 
       <section className="mt-8" aria-labelledby="activity">
         <h2 id="activity" className="text-xl font-semibold">
-          Recent activity
+          Recent threads
         </h2>
-        <EmptyState
-          className="mt-4"
-          icon={MessagesSquare}
-          title={isOwn ? "Nothing here yet" : `No posts from @${profile.username} yet`}
-          description="Threads and replies appear here once the forum opens."
-        />
+        {threads.length > 0 ? (
+          <Card className="mt-4">
+            <ol className="divide-y">
+              {threads.map((thread) => (
+                <li key={thread.id}>
+                  <ThreadRow thread={thread} />
+                </li>
+              ))}
+            </ol>
+          </Card>
+        ) : (
+          <EmptyState
+            className="mt-4"
+            icon={MessagesSquare}
+            title={isOwn ? "Nothing here yet" : `No threads from @${profile.username} yet`}
+            description={isOwn ? "Threads you start show up here." : "Their threads will show up here."}
+            actions={
+              isOwn ? (
+                <Button asChild size="sm">
+                  <Link href="/forum/new">Start a thread</Link>
+                </Button>
+              ) : undefined
+            }
+          />
+        )}
       </section>
     </div>
   );

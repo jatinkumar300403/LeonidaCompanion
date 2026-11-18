@@ -3,6 +3,7 @@
 import { LogOut, Settings, Shield, UserRound, UserRoundPen } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { NotificationBell } from "@/components/layout/notification-bell";
 import { UserAvatar } from "@/components/shared/user-avatar";
 import { Button } from "@/components/ui/button";
 import {
@@ -19,7 +20,9 @@ import { signOutAndReload } from "@/lib/supabase/sign-out";
 
 type MenuProfile = { username: string; display_name: string | null; avatar_url: string | null; role: string };
 type MenuState =
-  { status: "loading" } | { status: "signed-out" } | { status: "signed-in"; profile: MenuProfile | null };
+  | { status: "loading" }
+  | { status: "signed-out" }
+  | { status: "signed-in"; userId: string; profile: MenuProfile | null };
 
 /**
  * Header account control. Auth is read in the browser, so public pages stay static/ISR: the
@@ -47,7 +50,7 @@ export function UserMenu() {
         .select("username, display_name, avatar_url, role")
         .eq("id", userId)
         .maybeSingle();
-      if (active) setState({ status: "signed-in", profile: profile ?? null });
+      if (active) setState({ status: "signed-in", userId, profile: profile ?? null });
     };
 
     void load();
@@ -64,7 +67,9 @@ export function UserMenu() {
   }, []);
 
   return (
-    <div className="flex w-[4.5rem] justify-end" data-testid="account-slot">
+    // Fixed width fits "Sign in" or the bell + avatar, so the header never shifts.
+    <div className="flex w-[5.25rem] items-center justify-end gap-1" data-testid="account-slot">
+      {state.status === "signed-in" && state.profile ? <NotificationBell userId={state.userId} /> : null}
       {state.status === "signed-out" ? (
         <Button asChild variant="secondary" size="sm">
           <Link href="/sign-in">Sign in</Link>

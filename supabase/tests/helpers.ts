@@ -50,7 +50,9 @@ export const cleanupTasks: Array<() => PromiseLike<unknown>> = [];
 
 /**
  * Creates a confirmed user (and profile unless `profile: false`) through the admin API, then signs
- * in with a random password to get a client that acts as them.
+ * in with a random password to get a client that acts as them. Profiles are "established" (two
+ * days old, reputation 20) unless `fresh: true`, so the Phase 4 new-account limits (D-062) only
+ * apply where a test asks for a new account.
  */
 export async function createTestUser(
   label: string,
@@ -58,6 +60,8 @@ export async function createTestUser(
     role?: "user" | "mod" | "admin";
     banned?: boolean;
     profile?: boolean;
+    fresh?: boolean;
+    reputation?: number;
     metadata?: Record<string, unknown>;
   } = {},
 ): Promise<TestUser> {
@@ -81,6 +85,12 @@ export async function createTestUser(
       username,
       age_confirmed_at: now,
       terms_accepted_at: now,
+      ...(options.fresh
+        ? { reputation: options.reputation ?? 0 }
+        : {
+            created_at: new Date(Date.now() - 2 * 86_400_000).toISOString(),
+            reputation: options.reputation ?? 20,
+          }),
     });
     if (insert.error) throw new Error(`profile(${label}) failed: ${insert.error.message}`);
     if (options.role || options.banned) {
