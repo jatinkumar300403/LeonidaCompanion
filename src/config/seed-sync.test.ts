@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+import { DEFAULT_FLAGS, FLAG_KEYS } from "@/server/flags";
 import { RESERVED_USERNAMES, USERNAME_PATTERN } from "./auth";
 import { TAGS } from "./tags";
 
@@ -42,9 +43,10 @@ describe("seed.sql stays in step with src/config", () => {
     expect(seed).toMatch(/\('online', 'Online', '[^']*', 4, false, true, false\)/);
   });
 
-  it("seeds every feature flag off (D-018)", () => {
-    expect(seed).toContain(
-      `'{"FEATURE_ONLINE": false, "FEATURE_ADS": false, "FEATURE_ASK_ANON": false, "MAINTENANCE_MODE": false}'`,
-    );
+  it("seeds every feature flag off (D-018, D-085)", () => {
+    const row = seed.match(/\('flags', '(\{[^']*\})'\)/);
+    expect(row).not.toBeNull();
+    expect(JSON.parse(row![1]!)).toEqual(DEFAULT_FLAGS);
+    expect(Object.keys(DEFAULT_FLAGS)).toEqual([...FLAG_KEYS]);
   });
 });

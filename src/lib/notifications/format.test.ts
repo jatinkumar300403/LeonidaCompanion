@@ -34,6 +34,24 @@ describe("describeNotification", () => {
     expect(describeNotification({ ...base, type: "clip_approved", payload: { clip_id: 5 } }).href).toBe("/clips/5");
   });
 
+  it("describes moderation notices (Phase 6)", () => {
+    const removed = describeNotification({
+      ...base,
+      type: "mod_action",
+      payload: { message: "A moderator removed your reply in “Where is X?”.", thread_id: 4, post_id: 8 },
+    });
+    expect(removed).toMatchObject({
+      text: "A moderator removed your reply in “Where is X?”.",
+      href: "/forum/t/4/thread#post-8",
+    });
+    expect(
+      describeNotification({ ...base, type: "mod_action", payload: { message: "Your account is suspended." } }),
+    ).toMatchObject({ text: "Your account is suspended.", href: null });
+    expect(
+      describeNotification({ ...base, type: "mod_alert", payload: { message: "Possible self-harm in a reply" } }),
+    ).toMatchObject({ text: "Possible self-harm in a reply", href: "/admin/moderation" });
+  });
+
   it("builds thread links", () => {
     expect(threadHref(1, "a b")).toBe("/forum/t/1/a%20b");
     expect(threadHref(1, null, 9)).toBe("/forum/t/1/thread#post-9");

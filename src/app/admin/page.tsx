@@ -35,7 +35,7 @@ export default async function AdminDashboardPage() {
       <PageHeader
         eyebrow="Admin"
         title="Dashboard"
-        description="Today at a glance (UTC day). Moderation, clips and wiki screens arrive in Phases 5–7."
+        description="Today at a glance (UTC day). Held posts and open reports are worked in Moderation."
         actions={
           isAdmin ? (
             <>
@@ -62,12 +62,13 @@ export default async function AdminDashboardPage() {
             <h2 id="today-heading" className="text-lg font-semibold">
               Today
             </h2>
-            <dl className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+            <dl className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
               <Stat label="New threads" value={data.today.threads} />
               <Stat label="New posts" value={data.today.posts} />
               <Stat label="AI questions" value={data.today.asks} />
               <Stat label="Clips pending" value={data.today.clipsPending} />
               <Stat label="Open reports" value={data.today.reportsOpen} />
+              <Stat label="Held for review" value={data.today.held} />
             </dl>
           </section>
 

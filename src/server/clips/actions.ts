@@ -23,7 +23,9 @@ import { devMockFetchFor } from "@/server/clips/dev-mock";
 import { precheckClip } from "@/server/clips/hooks";
 import { resolveClip, type ResolveOptions } from "@/server/clips/resolve";
 import type { ResolveFailure } from "@/server/clips/types";
+import { getFlags, MAINTENANCE_MESSAGE, writesPausedFor } from "@/server/flags";
 import { logModerationAction } from "@/server/moderation/log";
+import { excerptOf, recordPrecheck } from "@/server/moderation/precheck";
 import { createSupabaseServerClient } from "@/server/supabase/server";
 import type { ClipPlatform, ClipStatus } from "@/types/content";
 
@@ -47,6 +49,7 @@ async function gate(
   if (!session.profile) return { error: "Finish setting up your account first." };
   if (session.profile.banned) return { error: "Your account is suspended, so you can't do that right now." };
   if (options.staff && session.profile.role === "user") return { error: "Only moderators can do that." };
+  if (writesPausedFor(await getFlags(), session.profile.role)) return { error: MAINTENANCE_MESSAGE };
   const complete = session as CompleteSession;
 
   // Dev test identities skip limits and Turnstile, like the forum (D-046, D-063).
@@ -184,19 +187,20 @@ export async function submitClip(_prev: SubmitClipState, formData: FormData): Pr
       };
     }
 
-    const precheck = await precheckClip({
-      clip: result.clip,
-      caption,
-      userId: session.userId,
-      reputation: session.profile.reputation,
-    });
-    if (precheck.action === "reject") return { status: "error", message: precheck.message };
+    const precheck = await precheckClip({ clip: result.clip, caption, session });
+    const excerpt = excerptOf(result.clip.title, caption);
+    if (precheck.action === "reject") {
+      after(() => recordPrecheck(precheck, { targetId: null, session, excerpt }));
+      return { status: "error", message: precheck.message ?? GENERIC };
+    }
 
     const inserted = await insertUserClip(result.clip, { userId: session.userId, category: input.category, caption });
     if (!inserted.ok) {
       const message = duplicateMessage(inserted.duplicate.status);
       return { status: "error", message, fieldErrors: { url: message } };
     }
+    // A hold stays pending like every submission; its labels go to the audit log for the reviewer.
+    after(() => recordPrecheck(precheck, { targetId: inserted.id, session, excerpt }));
     return { status: "done", clipId: inserted.id, title: result.clip.title };
   } catch (error) {
     console.error("[clips] submit failed", error);

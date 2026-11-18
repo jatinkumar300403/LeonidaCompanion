@@ -82,8 +82,11 @@ export function isCategoryReadOnly(
   category: { slug: string; isLocked: boolean },
   flags: { FEATURE_ONLINE: boolean },
 ): boolean {
-  return category.isLocked || (category.slug === "online" && !flags.FEATURE_ONLINE);
+  return category.isLocked || (category.slug === ONLINE_CATEGORY_SLUG && !flags.FEATURE_ONLINE);
 }
+
+/** The forum category FEATURE_ONLINE opens (the flag screen also flips its is_locked, D-042). */
+export const ONLINE_CATEGORY_SLUG = "online";
 
 /** Upstash scope for a new thread or reply: rep ≥ 100 gets the larger "Trusted" budget (D-063). */
 export function writeLimitScope(

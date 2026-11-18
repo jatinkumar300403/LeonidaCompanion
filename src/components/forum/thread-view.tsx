@@ -90,7 +90,7 @@ export function ThreadView({
       deleted: post.status === "deleted",
       hiddenNote:
         post.status === "held"
-          ? "Waiting for a moderator. Only you and moderators can see it."
+          ? "Pending review: waiting for a moderator. Only you and moderators can see it."
           : post.status === "removed"
             ? "Removed by a moderator. Only you and moderators can see it."
             : null,
@@ -176,7 +176,7 @@ export function ThreadView({
     deleted: questionDeleted,
     hiddenNote: hiddenFromPublic
       ? thread.status === "held"
-        ? "Waiting for a moderator. Only you and moderators can see this thread."
+        ? "Pending review: waiting for a moderator. Only you and moderators can see this thread."
         : "Removed by a moderator. Only you and moderators can see this thread."
       : null,
     spoiler: thread.isSpoiler || category.spoilersAllowed,
@@ -236,10 +236,12 @@ export function ThreadView({
 
       <div className="mx-auto mt-4 flex max-w-3xl flex-col gap-4">
         {hiddenFromPublic ? (
-          <Notice tone="info" title="Not public yet">
-            <span className="inline-flex items-center gap-1.5">
-              <ShieldAlert className="size-3.5" aria-hidden="true" />
-              Only you and moderators can see this thread.
+          <Notice tone="info" title={thread.status === "held" ? "Pending review" : "Not public"}>
+            <span className="inline-flex items-start gap-1.5">
+              <ShieldAlert className="mt-0.5 size-3.5 shrink-0" aria-hidden="true" />
+              {thread.status === "held"
+                ? "A moderator checks this thread before it goes public. Only you and moderators can see it for now."
+                : "Only you and moderators can see this thread."}
             </span>
           </Notice>
         ) : null}

@@ -48,3 +48,19 @@ export function humanizeSlug(slug: string): string {
   const text = decodeURIComponent(slug).replace(/[-_]+/g, " ").trim();
   return text ? text.charAt(0).toUpperCase() + text.slice(1) : "";
 }
+
+/** "permanently" or "until 20 Nov 2026, 10:00 UTC" (bans, D-083). UTC so server and browser agree. */
+export function formatBanEnd(until: string | null): string {
+  if (!until) return "permanently";
+  const date = new Date(until);
+  if (Number.isNaN(date.getTime())) return "permanently";
+  const text = new Intl.DateTimeFormat("en-GB", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    timeZone: "UTC",
+  }).format(date);
+  return `until ${text} UTC`;
+}

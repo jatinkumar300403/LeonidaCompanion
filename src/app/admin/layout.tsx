@@ -25,10 +25,16 @@ export default async function AdminLayout({ children }: LayoutProps<"/admin">) {
   const { profile } = await requireRole("mod", "/admin");
   const nav: AdminNavItem[] = [
     { href: "/admin", label: "Dashboard" },
+    { href: "/admin/moderation", label: "Moderation" },
+    { href: "/admin/users", label: "Users" },
     { href: "/admin/clips", label: "Clips" },
   ];
   if (profile.role === "admin") {
-    nav.push({ href: "/admin/articles", label: "Articles" }, { href: "/admin/launch", label: "Launch Hub" });
+    nav.push(
+      { href: "/admin/articles", label: "Articles" },
+      { href: "/admin/launch", label: "Launch Hub" },
+      { href: "/admin/settings", label: "Settings" },
+    );
   }
   if (process.env.NODE_ENV === "development") nav.push({ href: "/admin/ui", label: "UI showcase" });
 

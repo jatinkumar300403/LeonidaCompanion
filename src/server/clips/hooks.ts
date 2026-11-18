@@ -1,20 +1,25 @@
 import "server-only";
+import type { CompleteSession } from "@/server/auth/session";
 import type { ResolvedClip } from "@/server/clips/types";
+import { precheckContent, type PrecheckResult } from "@/server/moderation/precheck";
 
 /**
- * Phase 6 hook: the AI pre-check of a member's clip (SPEC §6 step 3, §8.2: title + caption).
- * Until Phase 6 fills it, everything is allowed; every submission is pending for a mod anyway.
- * Per D-016 a "hold" keeps the clip pending with its labels logged, and a "reject" refuses it.
+ * The AI pre-check of a member's clip (SPEC §6 step 3, §8.2): the platform title and the caption.
+ * Per D-016 a "hold" keeps the clip pending (every submission waits for a mod anyway) with its
+ * labels logged after the insert, and a "reject" refuses it with a friendly message.
  */
-export type ClipPrecheck =
-  { action: "allow" } | { action: "hold"; labels: string[] } | { action: "reject"; message: string };
-
 export async function precheckClip(input: {
   clip: ResolvedClip;
   caption: string | null;
-  userId: string;
-  reputation: number;
-}): Promise<ClipPrecheck> {
-  void input;
-  return { action: "allow" };
+  session: CompleteSession;
+}): Promise<PrecheckResult> {
+  return precheckContent({
+    kind: "clip",
+    title: input.clip.title,
+    body: input.caption ?? "(no caption)",
+    // A caption can hide a spoiler in ||bars||; the clip itself can't be tagged.
+    spoilerTagged: false,
+    context: `${input.clip.platform} clip by ${input.clip.creatorName}`,
+    session: input.session,
+  });
 }

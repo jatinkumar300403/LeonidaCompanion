@@ -1,6 +1,6 @@
 # PROGRESS — Leonida Atlas
 
-Launch: **Thu 19 Nov 2026**. Last updated: 2026-11-18 (Phase 5). Spec: `docs/SPEC.md`. Decisions: `docs/DECISIONS.md` (D-xxx).
+Launch: **Thu 19 Nov 2026**. Last updated: 2026-11-18 (Phase 6). Spec: `docs/SPEC.md`. Decisions: `docs/DECISIONS.md` (D-xxx).
 Legend: `[x]` done · `[ ]` to do · ⚡ = cut first if behind. The kit's fallback: ship 0–6 and 9–11 on launch day, then 7–8 on the 20th.
 
 ## Status
@@ -71,7 +71,45 @@ Legend: `[x]` done · `[ ]` to do · ⚡ = cut first if behind. The kit's fallba
   - Both crons were run by hand against the dev server: no bearer → 401; `twitch-clips` without keys → `{ skipped }`; `weekly-clips` freezes a finished week, refuses the current one and leaves an existing snapshot alone.
   - Visual QA at 390 and 1440, in dark and light, of `/clips`, a clip page, `/clips/submit`, `/clips/top/[week]` and `/admin/clips`. The Playwright MCP browser was locked by another session, so a Playwright script took the same captures. No horizontal overflow and no CSP violations. YouTube and Twitch players load in their frames (Twitch accepts `parent=localhost`).
   - QA rows, snapshots and test users were removed; DEV has no clips.
-- **Next:** Phase 6 (Prompt 6, moderation). It should fill `precheckClip()` in `src/server/clips/hooks.ts` and can reuse `logModerationAction()`.
+- **Done: Phase 6.**
+  - Moderation and safety (D-078 to D-090):
+    - **AI pre-check** (SPEC §8.2) on new threads, replies, edits of both, clip submissions and profile text. It uses the fast model with a strict zod schema, thinking off, low effort, a 4 s limit and no retries. Labels map to allow / hold / reject in code. An untagged spoiler on its own is sent back to be tagged; a hold saves the item as `held` with "Pending review"; `self_harm` alerts every admin.
+    - **No key = fallback**, applied, logged and shown in the admin UI.
+    - 1 migration on DEV: `moderation_actions.subject_id` + `excerpt`; the `mod_ban_user`, `mod_unban_user` and `admin_set_role` RPCs; notifications when a held reply or thread is approved, and "mod action on my content" notices for approve, remove, restore and lock.
+    - `/admin/moderation`: Held · Reports (grouped, Remove / Dismiss / Lock / Move / Ban author) · Recent actions (human and AI).
+    - `/admin/users` and `/admin/users/[id]`: search, activity, moderation history, ban/unban, role change for admins.
+    - `/admin/settings`: the flags, plus the new `SHADOW_HOLD_NEW_USERS`. `MAINTENANCE_MODE` pauses member writes and shows a site banner; `FEATURE_ONLINE` also unlocks the Online category.
+    - A held-count stat on the dashboard.
+    - The Community Guidelines page is a **draft** (badge on the page) for owner review.
+  - Checks:
+    - `pnpm typecheck`, `lint`, `format:check` and `build` pass;
+    - `pnpm test`: 671 unit tests, including one mocked answer per §8.2 label, parse failures, refusal, `max_tokens`, API errors and the 4 s timeout with fake timers;
+    - `pnpm test:db`: 87 tests (16 new in `supabase/tests/moderation.test.ts`);
+    - `pnpm e2e --workers=4`: 39 passed, 5 viewport skips. New: `e2e/moderation.spec.ts`, mobile and desktop:
+      - E2E #3: report a reply → Reports queue → ban the author for a day from the card → Remove → hidden for visitors, report `actioned`, audit row written;
+      - the held-reply flow: Pending review → approve in Held → public.
+    - With the default 8 workers on one dev server, the `/admin/ui` "networkidle" smoke test and the waitlist confirm can time out (they pass alone). Back-to-back full runs also hit Supabase's verify limit (D-089).
+  - Visual QA at 390 and 1440, dark and light (36 captures):
+    - pages: `/admin/moderation` (Held, Reports, Recent actions), `/admin/users`, a user page, `/admin/settings`, `/community-guidelines`, and a held thread and a held reply as their authors see them;
+    - no horizontal overflow and no console errors;
+    - the Playwright MCP browser was locked by another session again, so a Playwright script took the captures;
+    - fixes made during the check: profile reports say "Ban user"; Settings no longer shows the no-key warning twice; the user page's Ban button is solid.
+  - QA rows and test users were removed with `pnpm test:cleanup`, which now also sweeps reports filed by test users and audit rows about them.
+  - Two leftover audit rows from Phase 2's first RLS run were deleted.
+  - DEV ends with no test users, threads, held items, reports, audit rows or clips, the flags all off, and Online locked.
+- **Next:** Phase 9 (Prompt 9: SEO, PWA, analytics, legal, performance) for launch day. Phases 7–8 (wiki ingestion, Ask AI) move to Fri 20 Nov (kit cut line).
+  - Phase 8 must run `onThreadCreated()` when a mod approves a held Q&A thread (D-080).
+  - Phase 9's legal pages can link the guidelines draft.
+- **Owner to-dos from Phase 6:**
+  - **Add `ANTHROPIC_API_KEY` before launch.** Until then the SPEC §8.2 fallback holds every thread and reply from members under 20 reputation (almost everyone on day one), and those members can't save a bio. `/admin/moderation` says so in a banner.
+  - **Set a spend limit** in the Anthropic Console. A check costs about $0.0001–0.0003 with Haiku 5.5 at $0.10 / $0.50 per MTok.
+  - Then run the live check once: `$env:MODERATION_LIVE="1"; pnpm vitest run src/server/moderation/ai.live.test.ts`. It makes one real call per §8.2 label and checks:
+    - each label comes back as expected;
+    - the answer parses as strict JSON (no fallback);
+    - latency stays under the 4 s timeout.
+    If a label misfires, tune `MODERATION_SYSTEM_PROMPT` in `src/server/ai/prompts.ts`, not the rules.
+  - Review the Community Guidelines draft (`/community-guidelines`), then remove the Draft badge.
+  - Optional: raise DEV Auth's `rate_limit_verify` (30 per 5 min) if full E2E runs need to run back to back (D-089).
 - **Owner to-dos from Phase 5:**
   - Add `TWITCH_CLIENT_ID`, `TWITCH_CLIENT_SECRET` and `YOUTUBE_API_KEY` (all empty today). Until then YouTube and Twitch links show "can't be checked yet" and the Twitch cron skips. TikTok links work without a key.
   - Then check against the live APIs:
@@ -111,7 +149,13 @@ Legend: `[x]` done · `[ ]` to do · ⚡ = cut first if behind. The kit's fallba
   - `pnpm seed:dev` prints Node's "module type" warning (the repo has no `"type": "module"`). It is harmless.
   - `next dev` regenerates a managed `AGENTS.md`; it is gitignored (D-060).
   - The OG image uses the default font, not Bricolage Grotesque (Phase 9 can load the font file).
-  - Forum mod tools (remove, lock, move, ban) and the report queue arrive in Phase 6. Phase 4 only inserts reports, and threads and replies post without the AI pre-check until then.
+  - **No `ANTHROPIC_API_KEY` yet:** the AI pre-check runs on the §8.2 fallback. Members under 20 reputation are held for review and can't save a bio. See the Phase 6 owner to-dos.
+  - The AI pre-check runs in Server Actions only. A member writing through the PostgREST API with their own JWT skips it; the database limits still apply (D-088, post-launch fix).
+  - A held Q&A thread that a mod approves gets no AI suggested answer yet. Phase 8 should call `onThreadCreated()` on approval (D-080).
+  - Onboarding's display name isn't pre-checked; edits in Settings are (D-080).
+  - Static pages (`/about`, `/terms`, …) now revalidate every 5 minutes instead of never, because the maintenance banner reads the cached flags. Saving the flags refreshes them at once (D-086).
+  - DEV's `site_settings.flags` row has no `SHADOW_HOLD_NEW_USERS` key (the seed doesn't overwrite rows). It reads as off, and the first save on `/admin/settings` writes it.
+  - Full E2E runs use about 28 of DEV's 30 magic-link verifications per 5 minutes: space runs 5+ minutes apart, and prefer `--workers=4` (D-089).
   - Forum lists and thread pages serve stale data for one request after their 30 s cache expires (stale-while-revalidate, D-064). Rows changed directly in the database show up on the next load.
 
 ## Owner setup (docs/SETUP.md) → needed by
@@ -119,7 +163,7 @@ Legend: `[x]` done · `[ ]` to do · ⚡ = cut first if behind. The kit's fallba
 - [x] `.mcp.json` has the DEV ref. [ ] Sign in to Supabase + Vercel MCP (`/mcp`)
 - [x] Supabase DEV keys + access token (with database write). [ ] DEV auth URLs, Google + Discord OAuth. [ ] PROD project → **Phase 11**
 - [x] Upstash Redis. [x] Turnstile keys. [ ] Resend key + verified domain + Supabase SMTP → before launch (newsletter is DEV-only until then)
-- [ ] Twitch app + YouTube key (code is ready; empty keys degrade safely, see Phase 5 to-dos). Anthropic key + spend limit → **Phase 6**. Voyage key + limit → **Phase 7**
+- [ ] Twitch app + YouTube key (code is ready; empty keys degrade safely, see Phase 5 to-dos). Anthropic key + spend limit → **before launch** (Phase 6 code is ready; see its owner to-dos). Voyage key + limit → **Phase 7**
 - [ ] Domain (no "GTA", "Rockstar" or "Vice City") → **Phase 9/11**. Sentry → **Phase 9**. Vercel → **Phase 11**
 - [x] `.env.local`: `SEED_ADMIN_EMAIL` set. [ ] Check `ADMIN_EMAIL` and `WIKI_CONTACT_EMAIL`
 
@@ -159,8 +203,8 @@ Legend: `[x]` done · `[ ]` to do · ⚡ = cut first if behind. The kit's fallba
 - [x] /admin/clips (tap, A/R keys, source filter); E2E #4 with mocked APIs (D-073, D-076)
 
 ### 6 · Moderation & safety · §5 (safety), §8.2, §10 · Prompt 6
-- [ ] AI pre-check (Haiku 5.5, `messages.parse` + zod, 4 s timeout, fallback rule, D-011) on thread/post/clip/bio (D-016)
-- [ ] /admin/moderation (Held · Reports · Actions), ban dialog, audit log; /admin/users; flags screen; shadow-hold flag; Community Guidelines draft; E2E #3
+- [x] AI pre-check (Haiku 5.5, `messages.parse` + zod, 4 s timeout, fallback rule, D-011) on thread/post/clip/bio and edits (D-016, D-078 to D-081); live check waits for the key
+- [x] /admin/moderation (Held · Reports · Actions), ban dialog, audit log; /admin/users; flags screen; shadow-hold flag; Community Guidelines draft; E2E #3 (D-082 to D-089)
 
 ### 7 · Wiki ingestion + embeddings ⚡ · §7 · Prompt 7
 - [ ] `config/sources.ts` + licence guard test; confirm the real category names through each API first

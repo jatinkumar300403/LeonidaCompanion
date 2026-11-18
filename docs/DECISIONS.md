@@ -360,3 +360,81 @@ Context7 wasn't connected in this session (D-001), so look an API up in Context7
   - **`/admin/clips`** (all staff, in the admin nav): tabs Pending (oldest first), Approved, Rejected and Removed; a Members / Twitch auto filter; an inline facade preview; a category select applied on approve; reason presets plus free text for reject and remove; big tap targets at 390 px. Keys: **A** approves, **R** rejects or removes, **J/K** move. They're ignored while typing or in the consent notice. A reviewed clip leaves the list at once.
   - **Submit page:** a live preview 500 ms after the link looks right; six category buttons (`glitch` shown as "Glitch (funny)", D-015); a caption up to 140 characters (the database allows 280 for mod edits); and a required "This isn't a story spoiler or cutscene" box (CLAUDE.md rule 5). After sending, a "Sent for review" panel.
 - **D-077 · 2026-11-18 · Phase 5 dependencies.** None added. The Upstash client moved to `src/server/cache/redis.ts` (`getRedis`, `sharedCache`), shared by the rate limits and the Twitch token cache.
+
+### Phase 6 (2026-11-18)
+
+- **D-078 · 2026-11-18 · Claude SDK for moderation.**
+  - `@anthropic-ai/sdk` **1.9.0** is installed. npm `latest` is 1.10.0, but pnpm's release-age policy picked 1.9.0, as with the Supabase CLI in D-048.
+  - Context7 only has docs up to `sdk-v1.2.0`, so the API was checked against the claude-api skill and the installed type definitions:
+    - `messages.parse()` **throws** an `AnthropicError` ("Failed to parse structured output") when the answer isn't valid JSON or fails the zod schema. `parsed_output` is null only when there's no text block.
+    - Request options take `timeout`, `maxRetries` and `signal`.
+    - `thinking: { type: "disabled" }` and `output_config.effort` are typed.
+  - The call follows D-011: the fast model, `thinking` disabled, effort `low`, `max_tokens` 400, a strict schema (`zodOutputFormat`), a 4 s abort plus `timeout: 4000`, `maxRetries: 0`, and a second zod `safeParse` of the answer. No temperature and no prefill.
+  - `stop_reason` `refusal` or `max_tokens`, a parse failure, an API error, an abort or a missing key all fall back. The prompt lives in `src/server/ai/prompts.ts` and is static, so only the checked content changes between calls.
+- **D-079 · 2026-11-18 · From labels to a decision (`src/lib/moderation/verdict.ts`).**
+  - The model's labels decide, and its `action` is only a tiebreak. This keeps SPEC §8.2's rules in code, not in the model's judgement.
+  - Any of spam, hate, sexual or doxxing → reject. Any of self_harm, cheating_or_exploit, leak, harassment or untagged_spoiler → hold. off_topic alone → allow.
+  - **Untagged spoilers:** when `untagged_spoiler` is the only problem on a thread, reply or bio, the content is **sent back** rather than held. It isn't saved, and the author is asked to add a spoiler tag and post again. SPEC says "hold" but also "add a spoiler tag and resubmit", and Prompt 6 lists it under reject. Holding something the author must resubmit anyway would only fill the queue with duplicates.
+  - On clips an untagged spoiler is a hold: a clip can't be tagged, and it waits for a mod anyway.
+  - `untagged_spoiler` is ignored when the item is already behind a spoiler warning: an `is_spoiler` thread, Missions & Story, or a reply in a spoiler thread. Text inside `||…||` is covered by the prompt.
+  - A model "reject" or "hold" that names no label at all becomes a hold, so a person sees whatever the model couldn't name.
+- **D-080 · 2026-11-18 · Where the pre-check runs (`src/server/moderation/precheck.ts`).**
+  - It runs on new threads, replies, **edits of both**, clip submissions (platform title + caption), and profile text (display name + bio, only when changed).
+  - Edits are included so a harmless post can't be swapped for spam inside the 30-minute edit window. An edit that comes back "hold" is saved, then put back to `held` with the service role (members can't set that status, D-039). An edit that comes back "reject" isn't saved.
+  - Staff (mod, admin) aren't checked. Onboarding's display name isn't checked; the Settings form is.
+  - A held thread skips `onThreadCreated()`. **Phase 8:** run the AI suggestion when a mod approves a held Q&A thread.
+  - **No key = fallback.** The SPEC §8.2 rule applies (allow at reputation ≥ 20, hold below). One console warning is logged per server process. `/admin/moderation` and `/admin/settings` show an "AI pre-check is off" banner. Each fallback hold is logged with the cause in its reason, e.g. "AI check unavailable (no API key)".
+  - **E2E mock (follows D-044 and D-073):** under `next dev`, `e2e-…@example.com` users get a fake client (`src/server/moderation/dev-mock.ts`) that reads markers such as `[e2e-hold:harassment]` and otherwise allows. It goes through the real parse, rules and logging path. Production builds never use it.
+- **D-081 · 2026-11-18 · AI audit rows and admin alerts.**
+  - RLS only lets mods log their own human actions, and notifications are server-only. So `src/server/admin/moderation.ts` writes these with the service role, inside `after()`.
+  - Actions: `ai_hold`, `ai_reject` and `shadow_hold`. `target_id` is the saved row, `none` for a rejected item that wasn't saved, or the profile id for a bio.
+  - A `self_harm` label sends every admin a `mod_alert` notification, linked to `/admin/moderation` in the bell. QA must never trigger it on DEV, because the owner's account would get the alert.
+- **D-082 · 2026-11-18 · Audit-log columns.**
+  - `moderation_actions` gets two new columns:
+    - `subject_id`: whose content it was, `on delete set null`; it powers a user's moderation history;
+    - `excerpt`: at most 500 characters, plain text. It's the only copy of what a rejection refused, and it holds the end of a ban.
+  - Human actions are named `<type>_<decision>` (`post_remove`, `thread_lock`, `clip_remove`…), plus `thread_move`, `reports_dismissed`, `ban`, `unban`, `role_change` and `flags_update`.
+  - `pnpm test:cleanup` deletes test users' rows by `subject_id` *before* deleting the users (the column is nulled on delete).
+- **D-083 · 2026-11-18 · Bans and roles through RPCs.**
+  - `public.mod_ban_user(user, until, reason)`, `mod_unban_user(user, reason)` and `admin_set_role(user, role)` are security definer, callable by `authenticated` only, and check the caller themselves. So the native app can reuse them, and the API can't skip the rules.
+  - **Rules:**
+    - mods ban members;
+    - only admins ban or unban mods;
+    - nobody bans an admin or themselves;
+    - a ban needs a reason (it's shown to the member) and an end in the future, or null for permanent;
+    - only admins change roles, and never their own.
+  - Each RPC writes the audit row. Bans and unbans also notify the member (`mod_action`). Ban lengths: 1, 7 or 30 days, or permanent.
+  - Supabase's generated types don't model nullable RPC arguments, so "permanent" is passed as `null` with a cast.
+- **D-084 · 2026-11-18 · Moderation screens.**
+  - **Access:** `/admin/moderation` (Held · Reports · Recent actions) and `/admin/users` are for all staff. `/admin/settings` and role changes are admin-only.
+  - **Reads:** the queue reads as the mod under RLS. The users screens read ban state with the service role (`src/server/admin/users.ts`, no column grants), and never read or show emails.
+  - **Display:** content is shown as plain text (never rendered markdown), with spoiler items behind a disclosure.
+  - **Reports:** grouped by target. Remove takes the item down and closes its reports as `actioned`; Dismiss closes them as `dismissed`. Threads can also be locked or moved, and any author banned.
+  - Clip approve/reject stays in `/admin/clips`; the Reports tab can remove a clip.
+  - **Limits:** `modAction` 600 an hour, `modBan` 60 an hour, `adminSettings` 60 an hour, all per staff member.
+  - **Gotcha:** `posts → threads` embeds must name `threads!posts_thread_id_fkey`. `threads.accepted_post_id` is a second relationship, and PostgREST refuses an ambiguous embed.
+- **D-085 · 2026-11-18 · Shadow hold (`SHADOW_HOLD_NEW_USERS`).**
+  - A new flag, off in the seed, for spam attacks. While it's on, threads, replies and bios from new accounts (under 24 h or reputation < 5, D-062) are held even when the AI allows them. They're labelled `new_account` and logged as `shadow_hold`. Clips aren't affected: they're always reviewed.
+  - "Shadow" means it applies automatically and leaves no public trace. The author still honestly sees "Pending review". A truly silent hold would need a per-row flag and isn't worth it for v1.
+- **D-086 · 2026-11-18 · The other flags.**
+  - **`MAINTENANCE_MODE`** pauses members' writes:
+    - the forum gate (threads, replies, edits, deletes, votes, accepts), but not reports or blocks;
+    - the clip gate;
+    - profile text.
+  - Staff are exempt. A banner in the `(site)` layout reads the cached `getFlags()`, so pages stay static.
+  - **`FEATURE_ONLINE`:** turning it on or off also sets the Online category's `is_locked` (D-042).
+  - `FEATURE_ADS` is stored only (no ad slots exist). `FEATURE_ASK_ANON` is read by Phase 8.
+  - Saving calls `updateTag("site-settings")` (and `forum`) and logs `flags_update`.
+- **D-087 · 2026-11-18 · Notifications for moderation outcomes (SPEC §9 "mod action on my content").**
+  - Triggers notify the author when their reply is approved, removed or restored, and when their thread is approved, removed, restored or locked.
+  - Approving a held reply also sends the usual reply notifications: the quoted author, the thread author, and mentions. Approving a held thread sends the mentions it skipped.
+  - Accepting an answer (open ↔ solved) sends nothing new.
+- **D-088 · 2026-11-18 · Known gap: direct API writes.**
+  - The AI pre-check runs in Server Actions. A member calling PostgREST directly with their JWT can still insert an `open` thread or a `visible` reply. The database limits (new-account caps, links, bans) still apply, and reports and mod tools catch the rest.
+  - **Post-launch:** route forum writes through the server, as clips already are (D-070), or add an insert trigger that forces `held` for writes that skip the server.
+- **D-089 · 2026-11-18 · E2E and Supabase's verify limit.**
+  - DEV allows 30 magic-link verifications per 5 minutes per IP (`rate_limit_verify`). A full `pnpm e2e` run uses about 28.
+  - Run full suites at least 5 minutes apart; otherwise sign-ins fail with "That sign-in link didn't work".
+  - `e2e/moderation.spec.ts` runs serially and signs its moderator in once per viewport (saved storage state) to save sign-ins.
+  - Raising the DEV limit is the owner's call: it's a project setting.
+- **D-090 · 2026-11-18 · Phase 6 dependencies.** Only `@anthropic-ai/sdk`, which is in the stack. Nothing else was added.

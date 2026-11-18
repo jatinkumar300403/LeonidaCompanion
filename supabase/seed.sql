@@ -99,10 +99,10 @@ values
   ('ask')
 on conflict do nothing;
 
--- Site settings: feature flags all off (D-018) and an empty launch-facts skeleton (SPEC §4).
+-- Site settings: feature flags all off (D-018, D-085) and an empty launch-facts skeleton (SPEC §4).
 insert into public.site_settings (key, value)
 values
-  ('flags', '{"FEATURE_ONLINE": false, "FEATURE_ADS": false, "FEATURE_ASK_ANON": false, "MAINTENANCE_MODE": false}'),
+  ('flags', '{"FEATURE_ONLINE": false, "FEATURE_ADS": false, "FEATURE_ASK_ANON": false, "MAINTENANCE_MODE": false, "SHADOW_HOLD_NEW_USERS": false}'),
   ('launch_facts', '{"release_at": null, "platforms": [], "editions": [], "preload": null, "download_size": null}')
 on conflict (key) do nothing;
 

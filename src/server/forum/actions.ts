@@ -20,22 +20,25 @@ import {
   uuidSchema,
   voteSchema,
 } from "@/lib/validation/forum";
+import { holdContent } from "@/server/admin/moderation";
 import { isTestIdentity } from "@/server/admin/test-auth";
 import { getSession, type CompleteSession } from "@/server/auth/session";
 import { requestContext } from "@/server/auth/request";
 import { verifyTurnstileForm } from "@/server/auth/turnstile";
-import { getFlags } from "@/server/flags";
+import { getFlags, MAINTENANCE_MESSAGE, writesPausedFor } from "@/server/flags";
 import { FORUM_TAG, threadTag } from "@/server/forum/cache-tags";
 import { enqueueForumSolutionEmbedding, removeForumSolutionEmbedding } from "@/server/forum/embedding";
 import { onThreadCreated } from "@/server/forum/hooks";
 import { getCategoryById } from "@/server/forum/queries";
+import { excerptOf, precheckContent, recordPrecheck } from "@/server/moderation/precheck";
 import { createSupabaseServerClient } from "@/server/supabase/server";
 
 /**
  * Forum writes (SPEC §5). Every action: a signed-in, onboarded, unbanned member; zod; an Upstash
  * limit; Turnstile on new threads and replies (D-063); then the write runs as the member, so RLS
  * and the forum triggers have the last word (D-061, D-062). Afterwards the cache tags are updated
- * so the writer sees the change at once.
+ * so the writer sees the change at once. New threads, replies and their edits pass the AI
+ * pre-check first (SPEC §8.2, D-080): a hold saves them as `held`, a reject refuses them.
  */
 export type ForumResult<T extends object = object> =
   ({ ok: true; message: string } & T) | { ok: false; message: string; fieldErrors?: Record<string, string> };
@@ -48,13 +51,17 @@ const GENERIC = "Something went wrong. Please try again.";
 
 async function gate(
   scopes: RateLimitScope[],
-  options: { formData?: FormData; ipScope?: RateLimitScope } = {},
+  options: { formData?: FormData; ipScope?: RateLimitScope; duringMaintenance?: boolean } = {},
 ): Promise<Gate> {
   const session = await getSession();
   if (!session) return { error: "Sign in first." };
   if (!session.profile) return { error: "Finish setting up your account first." };
   if (session.profile.banned) return { error: "Your account is suspended, so you can't do that right now." };
   const complete = session as CompleteSession;
+  // Reports and blocks keep working in maintenance mode: they're safety tools (D-086).
+  if (!options.duringMaintenance && writesPausedFor(await getFlags(), session.profile.role)) {
+    return { error: MAINTENANCE_MESSAGE };
+  }
 
   // Dev test identities skip limits and Turnstile, like sign-in and onboarding (D-046, D-060).
   if (isTestIdentity(session.email ?? "")) return { session: complete, trusted: true };
@@ -122,6 +129,23 @@ export async function createThread(_prev: FormState, formData: FormData): Promis
     };
   }
 
+  // Missions & Story: every post sits behind a spoiler warning (SPEC §5).
+  const isSpoiler = category.spoilersAllowed || input.isSpoiler;
+  const precheck = await precheckContent({
+    kind: "thread",
+    title: input.title,
+    body: input.body,
+    spoilerTagged: isSpoiler,
+    context: category.name,
+    session: member,
+  });
+  const excerpt = excerptOf(input.title, input.body);
+  if (precheck.action === "reject") {
+    after(() => recordPrecheck(precheck, { targetId: null, session: member, excerpt }));
+    return { status: "error", message: precheck.message ?? GENERIC };
+  }
+  const held = precheck.action === "hold";
+
   const supabase = await createSupabaseServerClient();
   const { data, error } = await supabase
     .from("threads")
@@ -132,27 +156,30 @@ export async function createThread(_prev: FormState, formData: FormData): Promis
       slug: threadSlug(input.title),
       body_md: input.body,
       tags: input.tags,
-      // Missions & Story: every post sits behind a spoiler warning (SPEC §5).
-      is_spoiler: category.spoilersAllowed || input.isSpoiler,
-      status: "open",
+      is_spoiler: isSpoiler,
+      status: held ? "held" : "open",
     })
     .select("id, slug")
     .single();
   if (error) return { status: "error", message: failure(error, "create thread").message };
 
   invalidate();
-  after(() =>
-    onThreadCreated({
-      id: data.id,
-      slug: data.slug,
-      title: input.title,
-      bodyMd: input.body,
-      categoryId: category.id,
-      isQa: category.isQa,
-      isSpoiler: category.spoilersAllowed || input.isSpoiler,
-      authorId: member.userId,
-    }),
-  );
+  after(() => recordPrecheck(precheck, { targetId: data.id, session: member, excerpt }));
+  // A held thread isn't public yet: Phase 8's AI suggestion waits until it is (D-080).
+  if (!held) {
+    after(() =>
+      onThreadCreated({
+        id: data.id,
+        slug: data.slug,
+        title: input.title,
+        bodyMd: input.body,
+        categoryId: category.id,
+        isQa: category.isQa,
+        isSpoiler,
+        authorId: member.userId,
+      }),
+    );
+  }
   redirect(routes.thread(data.id, data.slug));
 }
 
@@ -178,21 +205,37 @@ export async function editThread(raw: unknown): Promise<ForumResult<{ url: Route
   }
   const category = await getCategoryById(thread.category_id);
   const slug = input.title === thread.title ? thread.slug : threadSlug(input.title);
+  const isSpoiler = Boolean(category?.spoilersAllowed) || input.isSpoiler;
+
+  // Edits are checked too, so a harmless post can't be swapped for spam later (D-080).
+  const precheck = await precheckContent({
+    kind: "thread",
+    title: input.title,
+    body: input.body,
+    spoilerTagged: isSpoiler,
+    context: category?.name,
+    session: check.session,
+  });
+  const excerpt = excerptOf(input.title, input.body);
+  if (precheck.action === "reject") {
+    after(() => recordPrecheck(precheck, { targetId: input.threadId, session: check.session, excerpt }));
+    return { ok: false, message: precheck.message ?? GENERIC };
+  }
 
   const { error } = await supabase
     .from("threads")
-    .update({
-      title: input.title,
-      slug,
-      body_md: input.body,
-      tags: input.tags,
-      is_spoiler: Boolean(category?.spoilersAllowed) || input.isSpoiler,
-    })
+    .update({ title: input.title, slug, body_md: input.body, tags: input.tags, is_spoiler: isSpoiler })
     .eq("id", input.threadId);
   if (error) return failure(error, "edit thread");
 
+  const held = precheck.action === "hold" && (await holdContent("thread", input.threadId));
   invalidate(input.threadId);
-  return { ok: true, message: "Thread updated.", url: routes.thread(input.threadId, slug) };
+  after(() => recordPrecheck(precheck, { targetId: input.threadId, session: check.session, excerpt }));
+  return {
+    ok: true,
+    message: held ? (precheck.message ?? "Thread updated. It's waiting for a moderator.") : "Thread updated.",
+    url: routes.thread(input.threadId, slug),
+  };
 }
 
 /** No replies: the thread is deleted. With replies: its question becomes "[deleted]" (D-061). */
@@ -235,7 +278,7 @@ export async function deleteThread(threadId: number): Promise<ForumResult<{ url:
 // ─── Replies ────────────────────────────────────────────────────────────────
 export type ReplyState =
   | { status: "idle" }
-  | { status: "posted"; postId: number; at: number }
+  | { status: "posted"; postId: number; at: number; held?: boolean; message?: string }
   | { status: "error"; message: string; fieldErrors?: Record<string, string> };
 
 /** The reply composer (useActionState). */
@@ -261,18 +304,32 @@ export async function createPost(_prev: ReplyState, formData: FormData): Promise
   const supabase = await createSupabaseServerClient();
   const { data: thread } = await supabase
     .from("threads")
-    .select("id, status, category_id")
+    .select("id, status, category_id, is_spoiler")
     .eq("id", input.threadId)
     .maybeSingle();
   if (!thread) return { status: "error", message: "That thread no longer exists." };
+  const category = await getCategoryById(thread.category_id);
   const staff = member.profile.role !== "user";
   if (!staff) {
     if (thread.status === "locked") return { status: "error", message: "This thread is locked." };
-    const category = await getCategoryById(thread.category_id);
     if (category && isCategoryReadOnly(category, await getFlags())) {
       return { status: "error", message: `${category.name} is read-only for now.` };
     }
   }
+
+  const precheck = await precheckContent({
+    kind: "post",
+    body: input.body,
+    spoilerTagged: thread.is_spoiler || Boolean(category?.spoilersAllowed),
+    context: category?.name,
+    session: member,
+  });
+  const excerpt = excerptOf(input.body);
+  if (precheck.action === "reject") {
+    after(() => recordPrecheck(precheck, { targetId: null, session: member, excerpt }));
+    return { status: "error", message: precheck.message ?? GENERIC };
+  }
+  const held = precheck.action === "hold";
 
   const { data, error } = await supabase
     .from("posts")
@@ -280,7 +337,7 @@ export async function createPost(_prev: ReplyState, formData: FormData): Promise
       thread_id: input.threadId,
       author_id: member.userId,
       body_md: input.body,
-      status: "visible",
+      status: held ? "held" : "visible",
       reply_to_post_id: input.replyToPostId,
     })
     .select("id")
@@ -288,7 +345,10 @@ export async function createPost(_prev: ReplyState, formData: FormData): Promise
   if (error) return { status: "error", message: failure(error, "reply").message };
 
   invalidate(input.threadId);
-  return { status: "posted", postId: data.id, at: Date.now() };
+  after(() => recordPrecheck(precheck, { targetId: data.id, session: member, excerpt }));
+  return held
+    ? { status: "posted", postId: data.id, at: Date.now(), held: true, message: precheck.message ?? undefined }
+    : { status: "posted", postId: data.id, at: Date.now() };
 }
 
 export async function editPost(raw: unknown): Promise<ForumResult> {
@@ -310,10 +370,35 @@ export async function editPost(raw: unknown): Promise<ForumResult> {
   if (!canEdit({ createdAt: post.created_at, authorId: post.author_id }, viewer)) {
     return { ok: false, message: forumErrorMessage({ message: "edit_window_closed" })! };
   }
+
+  const { data: thread } = await supabase
+    .from("threads")
+    .select("is_spoiler, category_id")
+    .eq("id", post.thread_id)
+    .maybeSingle();
+  const category = thread ? await getCategoryById(thread.category_id) : null;
+  const precheck = await precheckContent({
+    kind: "post",
+    body: parsed.data.body,
+    spoilerTagged: Boolean(thread?.is_spoiler) || Boolean(category?.spoilersAllowed),
+    context: category?.name,
+    session: check.session,
+  });
+  const excerpt = excerptOf(parsed.data.body);
+  if (precheck.action === "reject") {
+    after(() => recordPrecheck(precheck, { targetId: post.id, session: check.session, excerpt }));
+    return { ok: false, message: precheck.message ?? GENERIC };
+  }
+
   const { error } = await supabase.from("posts").update({ body_md: parsed.data.body }).eq("id", post.id);
   if (error) return failure(error, "edit reply");
-  invalidate(post.thread_id, false);
-  return { ok: true, message: "Reply updated." };
+  const held = precheck.action === "hold" && (await holdContent("post", post.id));
+  invalidate(post.thread_id, held);
+  after(() => recordPrecheck(precheck, { targetId: post.id, session: check.session, excerpt }));
+  return {
+    ok: true,
+    message: held ? (precheck.message ?? "Reply updated. It's waiting for a moderator.") : "Reply updated.",
+  };
 }
 
 /** Soft delete (SPEC §5): the reply shows "[deleted]" and stops counting. */
@@ -414,7 +499,7 @@ export async function reportContent(raw: unknown): Promise<ForumResult> {
   if (!parsed.success) {
     return { ok: false, message: "Pick a reason.", fieldErrors: forumFieldErrors(parsed.error) };
   }
-  const check = await gate(["forumReport"]);
+  const check = await gate(["forumReport"], { duringMaintenance: true });
   if ("error" in check) return { ok: false, message: check.error };
 
   const supabase = await createSupabaseServerClient();
@@ -433,7 +518,7 @@ export async function reportContent(raw: unknown): Promise<ForumResult> {
 export async function setBlocked(userId: string, blocked: boolean): Promise<ForumResult> {
   const parsed = uuidSchema.safeParse(userId);
   if (!parsed.success) return { ok: false, message: "That user doesn't exist." };
-  const check = await gate(["forumBlock"]);
+  const check = await gate(["forumBlock"], { duringMaintenance: true });
   if ("error" in check) return { ok: false, message: check.error };
   if (parsed.data === check.session.userId) return { ok: false, message: "You can't block yourself." };
 

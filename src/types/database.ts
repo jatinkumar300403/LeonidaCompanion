@@ -462,9 +462,11 @@ export type Database = {
           actor_id: string | null
           actor_type: string
           created_at: string
+          excerpt: string | null
           id: number
           labels: string[]
           reason: string | null
+          subject_id: string | null
           target_id: string
           target_type: string
         }
@@ -473,9 +475,11 @@ export type Database = {
           actor_id?: string | null
           actor_type: string
           created_at?: string
+          excerpt?: string | null
           id?: never
           labels?: string[]
           reason?: string | null
+          subject_id?: string | null
           target_id: string
           target_type: string
         }
@@ -484,13 +488,30 @@ export type Database = {
           actor_id?: string | null
           actor_type?: string
           created_at?: string
+          excerpt?: string | null
           id?: never
           labels?: string[]
           reason?: string | null
+          subject_id?: string | null
           target_id?: string
           target_type?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "moderation_actions_subject_id_fkey"
+            columns: ["subject_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "moderation_actions_subject_id_fkey"
+            columns: ["subject_id"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       newsletter_subscribers: {
         Row: {
@@ -1004,6 +1025,10 @@ export type Database = {
       }
     }
     Functions: {
+      admin_set_role: {
+        Args: { p_role: string; p_user_id: string }
+        Returns: undefined
+      }
       get_my_profile: {
         Args: never
         Returns: {
@@ -1104,6 +1129,14 @@ export type Database = {
           title: string
           url: string
         }[]
+      }
+      mod_ban_user: {
+        Args: { p_reason: string; p_until: string; p_user_id: string }
+        Returns: undefined
+      }
+      mod_unban_user: {
+        Args: { p_reason: string; p_user_id: string }
+        Returns: undefined
       }
       search_chunks_fts: {
         Args: { include_spoilers?: boolean; match_count?: number; q: string }

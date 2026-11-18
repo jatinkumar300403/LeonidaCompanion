@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { after } from "next/server";
 import { publicEnv } from "@/env.client";
 import { rateLimit, rateLimitMessage } from "@/lib/ratelimit/limit";
 import { routes } from "@/lib/routes";
@@ -12,6 +13,8 @@ import {
 } from "@/lib/validation/profile";
 import { deleteUserAccount } from "@/server/admin/account";
 import { requireUser } from "@/server/auth/session";
+import { getFlags, MAINTENANCE_MESSAGE, writesPausedFor } from "@/server/flags";
+import { excerptOf, precheckContent, recordPrecheck } from "@/server/moderation/precheck";
 import { AvatarError, avatarPathFromUrl, processAvatar } from "@/server/profiles/avatar";
 import { createSupabaseServerClient } from "@/server/supabase/server";
 
@@ -42,7 +45,28 @@ export async function updateProfile(_prev: SettingsState, formData: FormData): P
     return { status: "error", message: "Please fix the highlighted fields.", fieldErrors: fieldErrors(parsed.error) };
   }
 
-  // Phase 6 adds the AI moderation pre-check for bios here (D-016).
+  if (writesPausedFor(await getFlags(), session.profile.role)) return { status: "error", message: MAINTENANCE_MESSAGE };
+
+  // AI pre-check of the public profile text (SPEC §8.2). Per D-016 a held or rejected bio isn't
+  // saved: the member is told why, and self_harm also alerts the admins.
+  const { displayName, bio } = parsed.data;
+  const changed =
+    (displayName ?? null) !== (session.profile.displayName ?? null) || (bio ?? null) !== (session.profile.bio ?? null);
+  if (changed && (displayName || bio)) {
+    const precheck = await precheckContent({
+      kind: "bio",
+      body: [displayName ? `Display name: ${displayName}` : null, bio ? `Bio: ${bio}` : null]
+        .filter(Boolean)
+        .join("\n"),
+      spoilerTagged: false,
+      session,
+    });
+    if (precheck.action !== "allow") {
+      after(() => recordPrecheck(precheck, { targetId: null, session, excerpt: excerptOf(displayName, bio) }));
+      return { status: "error", message: precheck.message ?? "We couldn't save your profile. Please try again." };
+    }
+  }
+
   const supabase = await createSupabaseServerClient();
   const { error } = await supabase
     .from("profiles")

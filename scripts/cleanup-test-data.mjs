@@ -26,6 +26,22 @@ async function testUsers() {
 }
 
 const users = await testUsers();
+
+// Phase 6: audit rows about test users (AI rows have no actor) and reports they filed. Both
+// columns are set to null when the user is deleted, so this runs first.
+if (users.length > 0) {
+  const ids = users.map((user) => user.id);
+  for (let index = 0; index < ids.length; index += 200) {
+    const batch = ids.slice(index, index + 200);
+    for (const { error } of [
+      await admin.from("moderation_actions").delete().in("subject_id", batch),
+      await admin.from("reports").delete().in("reporter_id", batch),
+    ]) {
+      if (error) console.error(`[cleanup] ${error.message}`);
+    }
+  }
+}
+
 for (const user of users) {
   const { data: files } = await admin.storage.from("avatars").list(user.id, { limit: 100 });
   if (files?.length) await admin.storage.from("avatars").remove(files.map((file) => `${user.id}/${file.name}`));

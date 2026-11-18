@@ -122,7 +122,9 @@ function ReplyForm({ threadId, canLink }: { threadId: number; canLink: boolean }
       setBody("");
       setReplyTo(null);
       setTurnstileKey((key) => key + 1);
-      toast.success("Reply posted.");
+      // A held reply (SPEC §8.2) is saved but waits for a moderator; only its author sees it.
+      if (result.held) toast.info(result.message ?? "Your reply is waiting for a moderator.");
+      else toast.success("Reply posted.");
       router.refresh();
       window.setTimeout(() => {
         document.getElementById(`post-${result.postId}`)?.scrollIntoView({ behavior: "smooth", block: "center" });

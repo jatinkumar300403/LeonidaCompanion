@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatCount, formatDuration, formatRelativeTime, hostnameOf, humanizeSlug } from "./format";
+import { formatBanEnd, formatCount, formatDuration, formatRelativeTime, hostnameOf, humanizeSlug } from "./format";
 
 describe("formatCount", () => {
   it.each([
@@ -53,5 +53,13 @@ describe("humanizeSlug", () => {
     expect(humanizeSlug("lose-wanted-level-fast")).toBe("Lose wanted level fast");
     expect(humanizeSlug("caf%C3%A9_tips")).toBe("Café tips");
     expect(humanizeSlug("")).toBe("");
+  });
+});
+
+describe("formatBanEnd", () => {
+  it("says when a ban ends, in UTC", () => {
+    expect(formatBanEnd("2026-11-20T10:05:00Z")).toBe("until 20 Nov 2026, 10:05 UTC");
+    expect(formatBanEnd(null)).toBe("permanently");
+    expect(formatBanEnd("not a date")).toBe("permanently");
   });
 });

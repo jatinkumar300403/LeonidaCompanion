@@ -72,6 +72,11 @@ export function describeNotification(row: NotificationRow): NotificationView {
     case "mod_action":
       text = str(p.message) ?? "A moderator acted on your content";
       break;
+    case "mod_alert":
+      // Staff only (SPEC §8.2: a self-harm hold notifies admins).
+      text = str(p.message) ?? "Something needs a moderator";
+      href = "/admin/moderation" as Route;
+      break;
     default:
       text = str(p.message) ?? "You have a new notification";
   }

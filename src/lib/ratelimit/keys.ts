@@ -43,6 +43,10 @@ export const RATE_LIMITS = {
   clipWriteIp: { limit: 30, window: "1 h" },
   clipVote: { limit: 300, window: "1 h" },
   clipReview: { limit: 600, window: "1 h" },
+  // Moderation (Phase 6, D-084). Staff only; generous, but a stolen mod session can't run wild.
+  modAction: { limit: 600, window: "1 h" },
+  modBan: { limit: 60, window: "1 h" },
+  adminSettings: { limit: 60, window: "1 h" },
 } as const satisfies Record<string, { limit: number; window: `${number} ${"s" | "m" | "h" | "d"}` }>;
 
 export type RateLimitScope = keyof typeof RATE_LIMITS;

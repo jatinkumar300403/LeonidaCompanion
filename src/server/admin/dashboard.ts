@@ -7,7 +7,7 @@ import { getAdminSupabase } from "@/server/admin/supabase";
  * numbers only, never rows.
  */
 export type DashboardData = {
-  today: { threads: number; posts: number; asks: number; clipsPending: number; reportsOpen: number };
+  today: { threads: number; posts: number; asks: number; clipsPending: number; reportsOpen: number; held: number };
   askThumbsUpRate: number | null;
   askFeedbackCount: number;
   articles: { draft: number; review: number; scheduled: number; published: number };
@@ -29,29 +29,45 @@ export async function getDashboardData(): Promise<DashboardData> {
   };
   const head = { count: "exact", head: true } as const;
 
-  const [threads, posts, asks, clipsPending, reportsOpen, up, rated, draft, review, scheduled, published, ingest] =
-    await Promise.all([
-      count(admin.from("threads").select("id", head).gte("created_at", since)),
-      count(admin.from("posts").select("id", head).gte("created_at", since)),
-      count(admin.from("ask_logs").select("id", head).gte("created_at", since)),
-      count(admin.from("clips").select("id", head).eq("status", "pending")),
-      count(admin.from("reports").select("id", head).eq("status", "open")),
-      count(admin.from("ask_logs").select("id", head).eq("feedback", 1)),
-      count(admin.from("ask_logs").select("id", head).not("feedback", "is", null)),
-      count(admin.from("articles").select("id", head).eq("status", "draft")),
-      count(admin.from("articles").select("id", head).eq("status", "review")),
-      count(admin.from("articles").select("id", head).eq("status", "published").gt("published_at", nowIso)),
-      count(admin.from("articles").select("id", head).eq("status", "published").lte("published_at", nowIso)),
-      admin
-        .from("ingest_runs")
-        .select("source_id, started_at, finished_at, pages_changed")
-        .order("started_at", { ascending: false })
-        .limit(1)
-        .maybeSingle(),
-    ]);
+  const [
+    threads,
+    posts,
+    asks,
+    clipsPending,
+    reportsOpen,
+    heldThreads,
+    heldPosts,
+    up,
+    rated,
+    draft,
+    review,
+    scheduled,
+    published,
+    ingest,
+  ] = await Promise.all([
+    count(admin.from("threads").select("id", head).gte("created_at", since)),
+    count(admin.from("posts").select("id", head).gte("created_at", since)),
+    count(admin.from("ask_logs").select("id", head).gte("created_at", since)),
+    count(admin.from("clips").select("id", head).eq("status", "pending")),
+    count(admin.from("reports").select("id", head).eq("status", "open")),
+    count(admin.from("threads").select("id", head).eq("status", "held")),
+    count(admin.from("posts").select("id", head).eq("status", "held")),
+    count(admin.from("ask_logs").select("id", head).eq("feedback", 1)),
+    count(admin.from("ask_logs").select("id", head).not("feedback", "is", null)),
+    count(admin.from("articles").select("id", head).eq("status", "draft")),
+    count(admin.from("articles").select("id", head).eq("status", "review")),
+    count(admin.from("articles").select("id", head).eq("status", "published").gt("published_at", nowIso)),
+    count(admin.from("articles").select("id", head).eq("status", "published").lte("published_at", nowIso)),
+    admin
+      .from("ingest_runs")
+      .select("source_id, started_at, finished_at, pages_changed")
+      .order("started_at", { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+  ]);
 
   return {
-    today: { threads, posts, asks, clipsPending, reportsOpen },
+    today: { threads, posts, asks, clipsPending, reportsOpen, held: heldThreads + heldPosts },
     askThumbsUpRate: rated > 0 ? up / rated : null,
     askFeedbackCount: rated,
     articles: { draft, review, scheduled, published },
