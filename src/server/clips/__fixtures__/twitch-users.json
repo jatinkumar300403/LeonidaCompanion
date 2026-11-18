@@ -1,0 +1,14 @@
+{
+  "data": [
+    {
+      "id": "67955580",
+      "login": "chewiemelodies",
+      "display_name": "ChewieMelodies",
+      "type": "",
+      "broadcaster_type": "partner"
+    },
+    { "id": "1001", "login": "streamerone", "display_name": "StreamerOne", "type": "", "broadcaster_type": "" },
+    { "id": "1002", "login": "streamer_two", "display_name": "ストリーマー", "type": "", "broadcaster_type": "" },
+    { "id": "1003", "login": "streamerthree", "display_name": "StreamerThree", "type": "", "broadcaster_type": "" }
+  ]
+}

@@ -24,7 +24,7 @@ export const REPORT_REASONS = [
 
 export type ReportReason = (typeof REPORT_REASONS)[number]["value"];
 
-export const REPORT_TARGETS = ["thread", "post", "profile"] as const;
+export const REPORT_TARGETS = ["thread", "post", "profile", "clip"] as const;
 export type ReportTarget = (typeof REPORT_TARGETS)[number];
 
 /** Shown on AI suggested answers (SPEC §5; Phase 8 creates them). */

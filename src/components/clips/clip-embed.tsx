@@ -2,9 +2,10 @@
 
 import Image from "next/image";
 import { ExternalLink, Play } from "lucide-react";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { PalmSilhouette } from "@/components/shared/motifs";
+import { TIKTOK_EMBED_SCRIPT } from "@/config/clips";
 import { buildEmbedSrc, PLATFORM_LABELS, twitchParentHosts } from "@/lib/clips/embed";
 import { formatDuration } from "@/lib/format";
 import { cn } from "@/lib/utils";
@@ -14,7 +15,8 @@ import type { ClipSummary } from "@/types/content";
  * Click-to-load facade (SPEC §6, CLAUDE.md rule 1). Nothing from the platform loads until the
  * visitor presses play. On the first ever play we explain that the embed may set cookies and
  * remember the answer in localStorage (wrapped in try/catch: storage can be blocked).
- * Only official embeds are used: YouTube nocookie, Twitch clips with every `parent` host.
+ * Only official embeds are used: YouTube nocookie, Twitch clips with every `parent` host, and
+ * TikTok's own blockquote + embed.js, loaded on demand.
  */
 
 const CONSENT_KEY = "la:embed-consent";
@@ -42,21 +44,27 @@ export function ClipEmbed({
   parentHosts,
   initialStage = "idle",
   priority = false,
+  variant = "page",
   className,
 }: {
   clip: ClipSummary;
-  /** NEXT_PUBLIC_SITE_HOSTS (passed from the server). */
+  /** NEXT_PUBLIC_SITE_HOSTS + the Vercel host (passed from the server). */
   parentHosts: readonly string[];
   /** Showcase only: start in a given state. */
   initialStage?: Stage;
   priority?: boolean;
+  /** "card": a 16:9 frame in grids that grows to portrait when a portrait clip plays. */
+  variant?: "page" | "card";
   className?: string;
 }) {
   const [stage, setStage] = useState<Stage>(initialStage);
+  const [thumbFailed, setThumbFailed] = useState(false);
   const playButtonRef = useRef<HTMLButtonElement>(null);
   const loadButtonRef = useRef<HTMLButtonElement>(null);
   const platform = PLATFORM_LABELS[clip.platform];
   const portrait = clip.orientation === "portrait";
+  const playing = stage === "playing";
+  const tiktok = clip.platform === "tiktok";
 
   function play() {
     if (hasConsent()) {
@@ -79,21 +87,30 @@ export function ClipEmbed({
   }
 
   const currentHost = typeof window === "undefined" ? undefined : window.location.hostname;
-  const src =
-    stage === "playing"
-      ? buildEmbedSrc(clip.platform, clip.embedId, twitchParentHosts(parentHosts, currentHost))
-      : null;
+  const src = playing ? buildEmbedSrc(clip.platform, clip.embedId, twitchParentHosts(parentHosts, currentHost)) : null;
+
+  // Portrait clips keep a 16:9 frame in grids until they play, then grow to their own shape.
+  const portraitFrame = portrait && (variant === "page" || playing);
+  const frame =
+    playing && tiktok
+      ? "w-full"
+      : portraitFrame
+        ? "mx-auto aspect-[9/16] h-[min(70dvh,32rem)] max-w-full"
+        : "aspect-video w-full";
 
   return (
     <div
       className={cn(
-        "relative isolate overflow-hidden rounded-xl border bg-surface-2",
-        portrait ? "mx-auto aspect-[9/16] h-[min(70dvh,32rem)] max-w-full" : "aspect-video w-full",
+        "relative isolate rounded-xl border bg-surface-2",
+        playing && tiktok ? "overflow-visible" : "overflow-hidden",
+        frame,
         className,
       )}
     >
-      {stage === "playing" ? (
-        src ? (
+      {playing ? (
+        tiktok ? (
+          <TikTokEmbed videoId={clip.embedId} url={clip.url} />
+        ) : src ? (
           <iframe
             src={src}
             title={`${clip.title} (${platform} video)`}
@@ -103,31 +120,32 @@ export function ClipEmbed({
             referrerPolicy="strict-origin-when-cross-origin"
           />
         ) : (
-          <div className="absolute inset-0 grid place-items-center p-6 text-center">
-            <div>
-              <p className="text-sm text-muted-foreground">
-                This {platform} clip opens on {platform}.
-              </p>
-              <Button asChild size="sm" variant="secondary" className="mt-3">
-                <a href={clip.url} rel="noopener noreferrer" target="_blank">
-                  Watch on {platform}
-                  <ExternalLink aria-hidden="true" />
-                </a>
-              </Button>
-            </div>
-          </div>
+          <WatchOn platform={platform} url={clip.url} />
         )
       ) : (
         <>
-          {clip.thumbnailUrl ? (
-            <Image
-              src={clip.thumbnailUrl}
-              alt=""
-              fill
-              sizes="(min-width: 1024px) 560px, 100vw"
-              priority={priority}
-              className="object-cover"
-            />
+          {clip.thumbnailUrl && !thumbFailed ? (
+            <>
+              {portrait && variant === "card" ? (
+                <Image
+                  src={clip.thumbnailUrl}
+                  alt=""
+                  fill
+                  sizes="(min-width: 1024px) 420px, 100vw"
+                  className="scale-110 object-cover opacity-60 blur-xl"
+                  onError={() => setThumbFailed(true)}
+                />
+              ) : null}
+              <Image
+                src={clip.thumbnailUrl}
+                alt=""
+                fill
+                sizes="(min-width: 1024px) 560px, 100vw"
+                priority={priority}
+                className={portrait && variant === "card" ? "object-contain" : "object-cover"}
+                onError={() => setThumbFailed(true)}
+              />
+            </>
           ) : (
             <PlaceholderArt />
           )}
@@ -148,7 +166,7 @@ export function ClipEmbed({
               aria-label={`Play clip: ${clip.title} (loads ${platform})`}
               className="group/play absolute inset-0 grid place-items-center focus-visible:outline-offset-[-4px]"
             >
-              <span className="grid size-16 place-items-center rounded-full bg-dusk text-on-accent shadow-[0_10px_30px_-10px_rgb(0_0_0/0.6)] transition-transform group-hover/play:scale-105">
+              <span className="grid size-16 place-items-center rounded-full bg-dusk text-on-accent shadow-[0_10px_30px_-10px_rgb(0_0_0/0.6)] transition-transform group-hover/play:scale-105 motion-reduce:transition-none">
                 <Play className="ml-1 size-7 fill-current" aria-hidden="true" />
               </span>
             </button>
@@ -175,6 +193,61 @@ export function ClipEmbed({
       )}
     </div>
   );
+}
+
+function WatchOn({ platform, url }: { platform: string; url: string }) {
+  return (
+    <div className="absolute inset-0 grid place-items-center p-6 text-center">
+      <div>
+        <p className="text-sm text-muted-foreground">
+          This {platform} clip opens on {platform}.
+        </p>
+        <Button asChild size="sm" variant="secondary" className="mt-3">
+          <a href={url} rel="noopener noreferrer" target="_blank">
+            Watch on {platform}
+            <ExternalLink aria-hidden="true" />
+          </a>
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * TikTok's official embed (SPEC §6): their blockquote, turned into a player by embed.js. The
+ * blockquote and script are added by hand inside an element React leaves alone, because embed.js
+ * replaces the markup; the script is appended again for each clip so it scans the new blockquote.
+ */
+function TikTokEmbed({ videoId, url }: { videoId: string; url: string }) {
+  const hostRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const host = hostRef.current;
+    if (!host) return;
+    const quote = document.createElement("blockquote");
+    quote.className = "tiktok-embed";
+    quote.cite = url;
+    quote.dataset.videoId = videoId;
+    quote.style.maxWidth = "605px";
+    quote.style.minWidth = "288px";
+    quote.style.margin = "0 auto";
+    const section = document.createElement("section");
+    const link = document.createElement("a");
+    link.href = url;
+    link.target = "_blank";
+    link.rel = "noopener noreferrer";
+    link.textContent = "Watch on TikTok";
+    section.append(link);
+    quote.append(section);
+
+    const script = document.createElement("script");
+    script.src = TIKTOK_EMBED_SCRIPT;
+    script.async = true;
+    host.replaceChildren(quote, script);
+    return () => host.replaceChildren();
+  }, [videoId, url]);
+
+  return <div ref={hostRef} className="min-h-[36rem] w-full p-2" aria-live="polite" />;
 }
 
 /** Original artwork for clips without a thumbnail (never platform or Rockstar art). */

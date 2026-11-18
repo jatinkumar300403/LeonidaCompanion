@@ -1,17 +1,16 @@
 import "server-only";
 import { Ratelimit } from "@upstash/ratelimit";
-import { Redis } from "@upstash/redis";
-import { env, integrations } from "@/env";
+import { env } from "@/env";
+import { getRedis } from "@/server/cache/redis";
 import { RATE_LIMITS, rateLimitKey, type RateLimitScope } from "./keys";
 
 export type RateLimitResult = { success: boolean; retryAfterSeconds: number };
 
 const limiters = new Map<RateLimitScope, Ratelimit>();
-let redis: Redis | null = null;
 
 function limiterFor(scope: RateLimitScope): Ratelimit | null {
-  if (!integrations.upstash || !env.UPSTASH_REDIS_REST_URL || !env.UPSTASH_REDIS_REST_TOKEN) return null;
-  redis ??= new Redis({ url: env.UPSTASH_REDIS_REST_URL, token: env.UPSTASH_REDIS_REST_TOKEN });
+  const redis = getRedis();
+  if (!redis) return null;
   let limiter = limiters.get(scope);
   if (!limiter) {
     const { limit, window } = RATE_LIMITS[scope];

@@ -314,3 +314,49 @@ Context7 wasn't connected in this session (D-001), so look an API up in Context7
   - `@username` in forum markdown links to the profile through the `remark-mentions` plugin (MarkdownRenderer `mentions` prop; the sanitizer allows the `mention` class).
 - **D-068 · 2026-11-18 · "Similar threads".** `public.similar_threads()` uses the trigram operators `%`, `<%` and `%>` on titles, with thresholds lowered on the function (0.2 / 0.4) so the existing GIN index still serves it. It runs as the caller, so held and removed threads never show. `/forum/new` asks `GET /api/forum/similar` 350 ms after typing stops (6+ characters).
 - **D-069 · 2026-11-18 · Phase 4 dependencies.** None added. The bell, menus and dialogs reuse the shadcn components already installed.
+
+### Phase 5 (2026-11-18)
+
+- **D-070 · 2026-11-18 · Clip submissions go through the server.**
+  - Phase 2 let any member insert a `clips` row through the API, with a title, creator and thumbnail of their choosing. Migration `20261118170000_clips_phase5.sql` drops that policy and revokes `insert` from `anon`/`authenticated`.
+  - `submitClip` re-runs `resolveClip()` on the server, so every stored field comes from the platform. It then inserts with the service role from `src/server/admin/clips.ts`, with `submitted_by` set to the session user. The Twitch cron inserts the same way.
+  - Votes on clips need `status = 'approved'` (`private.votes_validate`), so a mod can't vote on a pending clip either.
+  - Fix: the approve/reject trigger wrote the payload key `title`, but the bell reads `clip_title`, so notifications said "Your clip". The trigger now writes `clip_title`.
+  - `public.hot_clips(category, limit, offset)` runs as the caller (approved only) and orders by `hot_rank(score, approved_at)` (D-022).
+- **D-071 · 2026-11-18 · Platform lookups (`src/server/clips`).**
+  - URL parsing is pure (`src/lib/clips/parse.ts`) with exact hostname lists, so look-alike domains are refused. Twitch: `clips.twitch.tv/<slug>`, `clips.twitch.tv/embed?clip=`, `twitch.tv/<channel>/clip/<slug>`, `m.twitch.tv/clip/<slug>`. YouTube: watch, `youtu.be`, `shorts`, `embed`, `live`, nocookie. TikTok: `@user/video/<id>`, `m.tiktok.com/v/<id>.html`, embed and player links, and short links (`vm.`, `vt.`, `/t/`), which oEmbed resolves.
+  - **Twitch:** the app token (client credentials) is cached in Upstash under `twitch:app-token` until 5 minutes before it expires, and fetched again once on a 401. GTA VI's game id is `TWITCH_GTA6_GAME_ID`, else `GET /helix/games?name=Grand Theft Auto VI`, cached 7 days (15 minutes when Twitch has no such category; Twitch clips are then refused with a clear message). The creator credit is the broadcaster, linked through one `/helix/users` lookup for the login.
+  - **YouTube:** `videos.list?part=snippet,contentDetails,status,statistics`. Statistics adds the view count that breaks clip-of-the-day ties, at the same quota cost. Rejected: `embeddable = false`, private, live or upcoming, `P0D`, over 60 s.
+  - **TikTok:** oEmbed gives no duration, so the queue shows "Length unknown: check it".
+  - Every call has a 5 s timeout. Platform trouble becomes "<Platform> didn't answer"; nothing throws into the page.
+  - **Without keys:** YouTube and Twitch links say they "can't be checked yet", and the submit page names the platforms that work (TikTok needs no key). Without the Supabase secret key, submissions show "not open yet". The crons answer `{ skipped }` and log one line.
+  - **Orientation** is derived, not stored: TikTok and YouTube `/shorts/` links are portrait.
+  - **Thumbnails** are stored only from an allowlist in `src/config/clips.ts`: `i.ytimg.com`, `clips-media-assets2.twitch.tv`, `static-cdn.jtvnw.net`, `*.tiktokcdn.com`, `*.tiktokcdn-us.com`. The same list feeds `images.remotePatterns`, so next/image never meets an unknown host. `ClipEmbed` falls back to the original placeholder art when a thumbnail fails (TikTok's are signed and expire).
+  - **TikTok is blocked in India** at the DNS level: the build machine resolves `www.tiktok.com` to an ISP "restricted" page. Vercel's servers can still call oEmbed, but visitors in India won't see TikTok thumbnails or players, and their "Watch on TikTok" link fails the same way.
+- **D-072 · 2026-11-18 · Clip limits, Turnstile, review.**
+  - Upstash limits, per user unless noted: link lookups 30 per 10 min (60 per IP), submissions 10 an hour (30 per IP), votes 300 an hour, reviews 600 an hour. Reports reuse the forum's `reportContent` (`"clip"` added to `REPORT_TARGETS`).
+  - Turnstile guards the submission (a public write). The preview lookup has rate limits only.
+  - Duplicates (`platform` + `external_id`) get a friendly message: "already on the site" with a link, "waiting for a moderator", or "reviewed before". A race on the unique key is handled the same way.
+  - `precheckClip()` (`src/server/clips/hooks.ts`) is the Phase 6 AI hook. It allows everything for now; every submission is pending anyway (D-016).
+  - Mods review as themselves under RLS. Each approve, reject or remove writes a `moderation_actions` row through `logModerationAction()` (`src/server/moderation/log.ts`), which Phase 6 can reuse.
+- **D-073 · 2026-11-18 · Clip rendering, caching and the E2E mock.**
+  - `/clips` renders per request (it reads `searchParams`, like D-050) over reads cached 60 s under the tag `clips`. Hot uses `hot_clips`; New sorts by `approved_at`; Top this week is clips approved in the last 7 days, by score. 12 a page, `?page=` links, page 2+ `noindex`.
+  - `/clips/[id]` is ISR (300 s, tag `clip:<id>`, `generateStaticParams` returns `[]`); anything not approved is a 404. `/clips/top/[week]` is ISR (1 h, tag `clips-weekly`).
+  - The viewer's own votes are read in the browser under RLS (`ClipVoteScope`, one query per page), so no clip page reads the session. Votes update `clip:<id>`; reviews update `clips` and `clip:<id>`.
+  - **E2E mock (follows D-044):** under `next dev`, lookups made for `e2e-…@example.com` users go to `src/server/clips/dev-mock.ts`, which answers from the recorded fixtures in `src/server/clips/__fixtures__`. No keys, no platform traffic, and it works with a reused dev server. In production builds `NODE_ENV` is `production`, so it never runs.
+  - The fixtures follow the documented responses, because the keys weren't available and TikTok is blocked here. Re-record them from real responses once the keys exist (PROGRESS lists what to check).
+- **D-074 · 2026-11-18 · Weekly top 10 and clip of the day.**
+  - Weeks are ISO weeks in UTC, keyed `2026-w47` (`src/lib/clips/week.ts`).
+  - `/api/cron/weekly-clips` freezes the previous week: clips approved during it, top 10 by score, ties broken by platform views, then by the earlier approval. A week that already has a snapshot is never rewritten. `?week=` backfills a finished week; an unfinished week is refused.
+  - Clip of the day follows D-022: the best score approved in the last 24 h, else the latest approved clip. In dev, the home page falls back to the `[SAMPLE]` clip only when there is none (D-030).
+  - Schedules for Phase 11's `vercel.json` or the GitHub Actions fallback: `twitch-clips` hourly, `weekly-clips` Monday 06:00 UTC.
+- **D-075 · 2026-11-18 · CSP started, platform images allowed.**
+  - There was no CSP yet. `next.config.ts` now sends `frame-src 'self'` plus `clips.twitch.tv`, `player.twitch.tv`, `www.youtube-nocookie.com`, `www.tiktok.com` and `challenges.cloudflare.com`, and also `object-src 'none'; base-uri 'self'`.
+  - Phase 9 adds the rest of D-014: `script-src` (with `www.tiktok.com` for `embed.js`), `img-src`, `connect-src`, `frame-ancestors` and `form-action`.
+  - Twitch `parent` hosts are `NEXT_PUBLIC_SITE_HOSTS` + `localhost` + the current host + `VERCEL_URL` (set by Vercel on every deploy and passed from the server).
+- **D-076 · 2026-11-18 · Clip pages and the review queue.**
+  - **Clip page:** facade, title, category, creator credit + "Watch on <Platform>", the caption through `MarkdownRenderer` (so `||spoilers||` work), votes, Report, "shared by @user", and VideoObject + BreadcrumbList JSON-LD. VideoObject has no `contentUrl`, because we never host the video. `uploadDate` is the approval time, and the OG image stands in when there's no thumbnail.
+  - **Removal:** "I'm the creator: remove this" links to `/dmca?clip=<id>`. Phase 9's removal form must read `clip`; until then `/dmca` points to the contact page. Admins remove an approved clip in one click from `/admin/clips` → Approved → Remove (with a reason).
+  - **`/admin/clips`** (all staff, in the admin nav): tabs Pending (oldest first), Approved, Rejected and Removed; a Members / Twitch auto filter; an inline facade preview; a category select applied on approve; reason presets plus free text for reject and remove; big tap targets at 390 px. Keys: **A** approves, **R** rejects or removes, **J/K** move. They're ignored while typing or in the consent notice. A reviewed clip leaves the list at once.
+  - **Submit page:** a live preview 500 ms after the link looks right; six category buttons (`glitch` shown as "Glitch (funny)", D-015); a caption up to 140 characters (the database allows 280 for mod edits); and a required "This isn't a story spoiler or cutscene" box (CLAUDE.md rule 5). After sending, a "Sent for review" panel.
+- **D-077 · 2026-11-18 · Phase 5 dependencies.** None added. The Upstash client moved to `src/server/cache/redis.ts` (`getRedis`, `sharedCache`), shared by the rate limits and the Twitch token cache.

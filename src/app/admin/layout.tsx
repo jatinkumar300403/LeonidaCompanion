@@ -23,7 +23,10 @@ export const metadata: Metadata = {
 export default async function AdminLayout({ children }: LayoutProps<"/admin">) {
   if (!integrations.supabase) notFound();
   const { profile } = await requireRole("mod", "/admin");
-  const nav: AdminNavItem[] = [{ href: "/admin", label: "Dashboard" }];
+  const nav: AdminNavItem[] = [
+    { href: "/admin", label: "Dashboard" },
+    { href: "/admin/clips", label: "Clips" },
+  ];
   if (profile.role === "admin") {
     nav.push({ href: "/admin/articles", label: "Articles" }, { href: "/admin/launch", label: "Launch Hub" });
   }

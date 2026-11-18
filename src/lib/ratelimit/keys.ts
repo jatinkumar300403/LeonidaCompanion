@@ -36,6 +36,13 @@ export const RATE_LIMITS = {
   forumBlock: { limit: 30, window: "1 h" },
   forumSimilarIp: { limit: 60, window: "1 m" },
   notificationsRead: { limit: 120, window: "1 h" },
+  // Clips (Phase 5, D-072). Lookups call the platform APIs, so they're limited per user and per IP.
+  clipResolve: { limit: 30, window: "10 m" },
+  clipResolveIp: { limit: 60, window: "10 m" },
+  clipSubmit: { limit: 10, window: "1 h" },
+  clipWriteIp: { limit: 30, window: "1 h" },
+  clipVote: { limit: 300, window: "1 h" },
+  clipReview: { limit: 600, window: "1 h" },
 } as const satisfies Record<string, { limit: number; window: `${number} ${"s" | "m" | "h" | "d"}` }>;
 
 export type RateLimitScope = keyof typeof RATE_LIMITS;

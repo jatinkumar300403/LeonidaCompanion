@@ -211,3 +211,48 @@ export function faqJsonLd(items: readonly { question: string; answer: string }[]
     })),
   } as const;
 }
+
+/**
+ * SPEC §13: clip pages. `embedUrl` is the platform's own player (we never host the video, so there
+ * is no `contentUrl`). Google needs a thumbnail, so callers pass the OG image when the platform
+ * gave none.
+ */
+export function clipVideoJsonLd({
+  title,
+  description,
+  url,
+  embedUrl,
+  thumbnailUrl,
+  uploadDate,
+  durationIso,
+  creator,
+  upvoteCount,
+}: {
+  title: string;
+  description: string;
+  url: string;
+  embedUrl: string;
+  thumbnailUrl: string;
+  uploadDate: string;
+  durationIso?: string | null;
+  creator?: ForumPerson | null;
+  upvoteCount: number;
+}) {
+  return {
+    "@context": "https://schema.org",
+    "@type": "VideoObject",
+    name: title.slice(0, 110),
+    description,
+    url,
+    embedUrl,
+    thumbnailUrl: [thumbnailUrl],
+    uploadDate,
+    ...(durationIso ? { duration: durationIso } : {}),
+    ...(creator ? { creator: person(creator) } : {}),
+    interactionStatistic: {
+      "@type": "InteractionCounter",
+      interactionType: "https://schema.org/LikeAction",
+      userInteractionCount: Math.max(0, upvoteCount),
+    },
+  } as const;
+}

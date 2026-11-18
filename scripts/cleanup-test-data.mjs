@@ -41,6 +41,21 @@ const sweeps = [
   admin.from("articles").delete().like("title", "[E2E]%"),
   admin.from("newsletter_subscribers").delete().like("email", "e2e-%@example.com"),
   admin.from("clips").delete().like("external_id", "rls-%"),
+  // Phase 5: E2E and visual-QA clips (submitters are set to null when test users are deleted).
+  admin.from("clips").delete().like("external_id", "e2e%"),
+  admin.from("clips").delete().like("title", "[E2E]%"),
+  admin.from("clips").delete().like("title", "[QA]%"),
+  ...(users.length > 0
+    ? [
+        admin
+          .from("moderation_actions")
+          .delete()
+          .in(
+            "actor_id",
+            users.map((user) => user.id),
+          ),
+      ]
+    : []),
   admin.from("ask_logs").delete().like("question", "rls %"),
   admin.from("ingest_runs").delete().like("source_id", "rls-%"),
   admin.from("knowledge_chunks").delete().like("source_ref", "rls-%"),

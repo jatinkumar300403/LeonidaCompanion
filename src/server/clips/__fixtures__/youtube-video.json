@@ -1,0 +1,42 @@
+{
+  "kind": "youtube#videoListResponse",
+  "etag": "fixture-etag",
+  "items": [
+    {
+      "kind": "youtube#video",
+      "etag": "fixture-item-etag",
+      "id": "dQw4w9WgXcQ",
+      "snippet": {
+        "publishedAt": "2026-11-19T08:00:00Z",
+        "channelId": "UCfixtureChannel000000",
+        "title": "Stole a jet ski, regretted it instantly",
+        "description": "GTA VI moment",
+        "thumbnails": {
+          "default": { "url": "https://i.ytimg.com/vi/dQw4w9WgXcQ/default.jpg", "width": 120, "height": 90 },
+          "medium": { "url": "https://i.ytimg.com/vi/dQw4w9WgXcQ/mqdefault.jpg", "width": 320, "height": 180 },
+          "high": { "url": "https://i.ytimg.com/vi/dQw4w9WgXcQ/hqdefault.jpg", "width": 480, "height": 360 }
+        },
+        "channelTitle": "Fixture Gaming",
+        "categoryId": "20",
+        "liveBroadcastContent": "none"
+      },
+      "contentDetails": {
+        "duration": "PT24S",
+        "dimension": "2d",
+        "definition": "hd",
+        "caption": "false",
+        "licensedContent": false
+      },
+      "status": {
+        "uploadStatus": "processed",
+        "privacyStatus": "public",
+        "license": "youtube",
+        "embeddable": true,
+        "publicStatsViewable": true,
+        "madeForKids": false
+      },
+      "statistics": { "viewCount": "48213", "likeCount": "1200", "favoriteCount": "0", "commentCount": "88" }
+    }
+  ],
+  "pageInfo": { "totalResults": 1, "resultsPerPage": 1 }
+}

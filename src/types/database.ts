@@ -1023,6 +1023,36 @@ export type Database = {
           username: string
         }[]
       }
+      hot_clips: {
+        Args: { p_category?: string; p_limit?: number; p_offset?: number }
+        Returns: {
+          approved_at: string | null
+          caption: string | null
+          category: string
+          created_at: string
+          creator_name: string | null
+          creator_url: string | null
+          duration_sec: number | null
+          external_id: string
+          id: number
+          platform: string
+          reject_reason: string | null
+          score: number
+          source: string
+          status: string
+          submitted_by: string | null
+          thumbnail_url: string | null
+          title: string
+          url: string
+          views_on_platform: number | null
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "clips"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       hot_rank: {
         Args: { p_created_at: string; p_score: number }
         Returns: number

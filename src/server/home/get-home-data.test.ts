@@ -15,6 +15,7 @@ vi.mock("@/server/articles/queries", () => ({
   getLatestArticles: async (type: string) => (type === "tip" ? latest.tips : []),
 }));
 vi.mock("@/server/forum/queries", () => ({ getHotThreads: async () => [] }));
+vi.mock("@/server/clips/queries", () => ({ getClipOfTheDay: async () => null }));
 
 describe("getHomeData", () => {
   it("never serves sample data outside development", async () => {

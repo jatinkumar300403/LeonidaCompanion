@@ -2,7 +2,7 @@ import type { ClipPlatform } from "@/types/content";
 
 /**
  * Official embed URLs only (CLAUDE.md rule 1): video is never downloaded, re-hosted or proxied.
- * Phase 5 adds URL parsing and metadata; this builds the iframe `src` for the click-to-load facade.
+ * Builds the iframe `src` for the click-to-load facade and the `embedUrl` for VideoObject JSON-LD.
  */
 
 export const PLATFORM_LABELS: Record<ClipPlatform, string> = {
@@ -22,7 +22,15 @@ export function twitchParentHosts(configured: readonly string[], currentHost?: s
   return [...new Set(hosts)];
 }
 
-/** iframe src for the platform, or null when the platform needs its own script (TikTok, Phase 5). */
+/**
+ * Hosts to pass from the server: the configured site hosts plus the Vercel deployment host
+ * (VERCEL_URL, set by Vercel on every deploy), so Preview deploys play Twitch clips too.
+ */
+export function serverParentHosts(configured: readonly string[], vercelUrl = process.env.VERCEL_URL): string[] {
+  return vercelUrl ? [...configured, vercelUrl.replace(/^https?:\/\//, "").replace(/\/.*$/, "")] : [...configured];
+}
+
+/** iframe src for the platform, or null when the platform needs its own script (TikTok's embed.js). */
 export function buildEmbedSrc(
   platform: ClipPlatform,
   embedId: string,
@@ -39,5 +47,25 @@ export function buildEmbedSrc(
     }
     case "tiktok":
       return null;
+  }
+}
+
+/** The page TikTok's embed.js turns into its player (also the VideoObject embedUrl). */
+export function tiktokEmbedUrl(videoId: string): string {
+  return `https://www.tiktok.com/embed/v2/${encodeURIComponent(videoId)}`;
+}
+
+/**
+ * `embedUrl` for VideoObject JSON-LD (SPEC §13): the platform's own player, without autoplay.
+ * Twitch gets the site's host as `parent`.
+ */
+export function publicEmbedUrl(platform: ClipPlatform, embedId: string, siteHost: string): string {
+  switch (platform) {
+    case "youtube":
+      return `https://www.youtube-nocookie.com/embed/${encodeURIComponent(embedId)}`;
+    case "twitch":
+      return `https://clips.twitch.tv/embed?${new URLSearchParams({ clip: embedId, parent: siteHost }).toString()}`;
+    case "tiktok":
+      return tiktokEmbedUrl(embedId);
   }
 }

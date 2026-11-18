@@ -68,13 +68,36 @@ export type ClipSummary = {
   /** Canonical URL on the platform ("Watch on …"). */
   url: string;
   title: string;
-  creatorName: string;
-  creatorUrl: string;
+  /** The streamer or channel credited under the clip (SPEC §6). Null if the platform gave none. */
+  creatorName: string | null;
+  creatorUrl: string | null;
   durationSec: number | null;
   thumbnailUrl: string | null;
   category: ClipCategory;
   score: number;
   orientation: "landscape" | "portrait";
+  /** The submitter's caption (≤ 140 characters, markdown with ||spoilers||). */
+  caption?: string | null;
+  /** Profile id of the member who submitted it (they can't vote on it); null for Twitch auto-candidates. */
+  submittedBy?: string | null;
+};
+
+export type ClipStatus = "pending" | "approved" | "rejected" | "removed";
+export type ClipSource = "user" | "twitch_auto";
+
+/** A clip page (/clips/[id]). */
+export type ClipDetail = ClipSummary & {
+  source: ClipSource;
+  submitterUsername: string | null;
+  viewsOnPlatform: number | null;
+  createdAt: string;
+  approvedAt: string | null;
+};
+
+/** A row in the /admin/clips review queue. */
+export type ClipQueueItem = ClipDetail & {
+  status: ClipStatus;
+  rejectReason: string | null;
 };
 
 export type AnswerSource = {

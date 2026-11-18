@@ -1,0 +1,62 @@
+{
+  "data": [
+    {
+      "id": "TopClipOne-AbC123",
+      "url": "https://clips.twitch.tv/TopClipOne-AbC123",
+      "embed_url": "https://clips.twitch.tv/embed?clip=TopClipOne-AbC123",
+      "broadcaster_id": "1001",
+      "broadcaster_name": "StreamerOne",
+      "creator_id": "2001",
+      "creator_name": "ClipperOne",
+      "video_id": "",
+      "game_id": "9990001",
+      "language": "en",
+      "title": "Jumped the drawbridge",
+      "view_count": 9000,
+      "created_at": "2026-11-19T10:00:00Z",
+      "thumbnail_url": "https://static-cdn.jtvnw.net/twitch-clips-thumbnails-prod/TopClipOne-AbC123/preview-480x272.jpg",
+      "duration": 18,
+      "vod_offset": null,
+      "is_featured": true
+    },
+    {
+      "id": "LongClipTwo-Def456",
+      "url": "https://clips.twitch.tv/LongClipTwo-Def456",
+      "embed_url": "https://clips.twitch.tv/embed?clip=LongClipTwo-Def456",
+      "broadcaster_id": "1002",
+      "broadcaster_name": "ストリーマー",
+      "creator_id": "2002",
+      "creator_name": "ClipperTwo",
+      "video_id": "",
+      "game_id": "9990001",
+      "language": "ja",
+      "title": "A very long clip",
+      "view_count": 4000,
+      "created_at": "2026-11-19T11:00:00Z",
+      "thumbnail_url": "https://clips-media-assets2.twitch.tv/two-preview-480x272.jpg",
+      "duration": 90,
+      "vod_offset": null,
+      "is_featured": false
+    },
+    {
+      "id": "OddThumbThree-Ghi789",
+      "url": "https://clips.twitch.tv/OddThumbThree-Ghi789",
+      "embed_url": "https://clips.twitch.tv/embed?clip=OddThumbThree-Ghi789",
+      "broadcaster_id": "1003",
+      "broadcaster_name": "StreamerThree",
+      "creator_id": "2003",
+      "creator_name": "ClipperThree",
+      "video_id": "",
+      "game_id": "9990001",
+      "language": "en",
+      "title": "Wasted by a pelican",
+      "view_count": 2500,
+      "created_at": "2026-11-19T12:00:00Z",
+      "thumbnail_url": "https://thumbs.example.net/three.jpg",
+      "duration": 31.2,
+      "vod_offset": null,
+      "is_featured": false
+    }
+  ],
+  "pagination": { "cursor": "eyJiIjpudWxsLCJhIjoiIn0" }
+}

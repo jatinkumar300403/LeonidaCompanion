@@ -1,6 +1,6 @@
 # PROGRESS — Leonida Atlas
 
-Launch: **Thu 19 Nov 2026**. Last updated: 2026-11-18 (Phase 3). Spec: `docs/SPEC.md`. Decisions: `docs/DECISIONS.md` (D-xxx).
+Launch: **Thu 19 Nov 2026**. Last updated: 2026-11-18 (Phase 5). Spec: `docs/SPEC.md`. Decisions: `docs/DECISIONS.md` (D-xxx).
 Legend: `[x]` done · `[ ]` to do · ⚡ = cut first if behind. The kit's fallback: ship 0–6 and 9–11 on launch day, then 7–8 on the 20th.
 
 ## Status
@@ -57,7 +57,29 @@ Legend: `[x]` done · `[ ]` to do · ⚡ = cut first if behind. The kit's fallba
     - deleted replies no longer show vote arrows;
     - the replies heading no longer counts the pinned accepted answer.
   - QA and test data were removed with `pnpm test:cleanup`.
-- **Next:** Phase 5 (Prompt 5, Clips) in a fresh session.
+- **Done: Phase 5.**
+  - Clips through official embeds only (D-070 to D-077):
+    - 1 migration on DEV: members can't insert clips through the API any more (the server resolves and inserts them); votes only on approved clips; `hot_clips`; the approval notification now carries `clip_title`;
+    - `resolveClip()` with URL parsers for every Twitch, YouTube and TikTok shape, Twitch Helix (cached app token, GTA VI game-id check), YouTube Data API (embeddable, ≤ 60 s, not live) and TikTok oEmbed, all on recorded fixtures;
+    - `/clips/submit` (live preview, category, caption, "not a story spoiler", Turnstile), `/admin/clips` (Pending / Approved / Rejected / Removed, source filter, A/R/J/K keys, audit log), `/clips` (category filter, Hot / New / Top this week, votes), `/clips/[id]` (credit, Watch on, report, removal link, VideoObject JSON-LD), `/clips/top/[week]`;
+    - the `twitch-clips` and `weekly-clips` crons, the real clip of the day on home, TikTok's `embed.js` on demand, a thumbnail fallback, and a first CSP (`frame-src` for the official players).
+  - Checks:
+    - `pnpm typecheck`, `lint`, `format:check` and `build` pass;
+    - `pnpm test`: 590 unit tests;
+    - `pnpm test:db`: 71 tests (8 new in `supabase/tests/clips.test.ts`);
+    - `pnpm e2e`: 35 passed, 5 viewport skips, including E2E #4 (YouTube clip with the API mocked → pending → admin approves → in `/clips` → the facade loads the nocookie iframe) on mobile and desktop.
+  - Both crons were run by hand against the dev server: no bearer → 401; `twitch-clips` without keys → `{ skipped }`; `weekly-clips` freezes a finished week, refuses the current one and leaves an existing snapshot alone.
+  - Visual QA at 390 and 1440, in dark and light, of `/clips`, a clip page, `/clips/submit`, `/clips/top/[week]` and `/admin/clips`. The Playwright MCP browser was locked by another session, so a Playwright script took the same captures. No horizontal overflow and no CSP violations. YouTube and Twitch players load in their frames (Twitch accepts `parent=localhost`).
+  - QA rows, snapshots and test users were removed; DEV has no clips.
+- **Next:** Phase 6 (Prompt 6, moderation). It should fill `precheckClip()` in `src/server/clips/hooks.ts` and can reuse `logModerationAction()`.
+- **Owner to-dos from Phase 5:**
+  - Add `TWITCH_CLIENT_ID`, `TWITCH_CLIENT_SECRET` and `YOUTUBE_API_KEY` (all empty today). Until then YouTube and Twitch links show "can't be checked yet" and the Twitch cron skips. TikTok links work without a key.
+  - Then check against the live APIs:
+    - Twitch: the token request works; `GET /helix/games?name=Grand Theft Auto VI` returns an id (put it in `TWITCH_GTA6_GAME_ID`); both URL shapes (`clips.twitch.tv/<slug>` and `twitch.tv/<channel>/clip/<slug>`) resolve; a clip from another game is refused; the thumbnail host is on the allowlist in `src/config/clips.ts`; the embed plays on localhost; one manual `twitch-clips` run inserts pending candidates.
+    - YouTube: `videos.list` returns `items` with `status.embeddable` and `contentDetails.duration`; a Short and a watch link both resolve; a non-embeddable video is refused; thumbnails come from `i.ytimg.com`.
+    - TikTok (from outside India): oEmbed returns `embed_product_id`, the thumbnail host is on the allowlist, and `embed.js` turns the blockquote into a player under the CSP.
+    - Then replace the fixtures in `src/server/clips/__fixtures__` with real responses and run `pnpm test`.
+  - Add the cron schedules in Phase 11: `/api/cron/twitch-clips` hourly and `/api/cron/weekly-clips` Monday 06:00 UTC.
 - **Owner to-dos from Phase 3:**
   - Add `RESEND_API_KEY` and a real `EMAIL_FROM` on a verified domain. Until then newsletter sign-ups work only on DEV (dev outbox, D-054) and stay disabled in production.
   - Optional: `INDEXNOW_KEY` (any 8–128 letters, digits or dashes), so publishing pings Bing.
@@ -77,7 +99,12 @@ Legend: `[x]` done · `[ ]` to do · ⚡ = cut first if behind. The kit's fallba
   - The magic link from the default email template uses PKCE, so it must be opened in the browser that requested it (see the template to-do above).
   - Screenshots taken with the Playwright MCP during page load log a harmless hydration warning (Playwright injects `caret-color`).
   - `pnpm ingest:wiki` only prints a Phase 7 placeholder.
-  - Sample clips use fake ids, so a loaded embed shows the platform's "unavailable" message. TikTok shows "Watch on TikTok" until Phase 5 adds `embed.js`.
+  - Sample clips use fake ids, so a loaded embed shows the platform's "unavailable" message.
+  - TikTok is blocked in India: this machine resolves `www.tiktok.com` to an ISP "restricted" page. TikTok's live oEmbed and `embed.js` couldn't be checked here, and visitors in India won't see TikTok thumbnails or players (D-071).
+  - The platform fixtures follow the documented responses, not recorded live ones (no keys yet). See the Phase 5 owner to-dos.
+  - `/dmca` is still a stub: the "I'm the creator: remove this" link sends `?clip=<id>`, which Phase 9's removal form must read (D-076).
+  - The CSP so far covers `frame-src`, `object-src` and `base-uri` only. Phase 9 adds the rest (D-075).
+  - Clip pages, lists and weekly pages are cached (D-073), so rows changed directly in the database show up after the cache expires, as with articles and the forum.
   - ESLint 9 shows npm's deprecation warning. It stays until the plugins support ESLint 10 (D-034).
   - The Supabase and Vercel MCP servers still need the owner's sign-in. Context7 and Playwright work. Phases 2–3 used the Supabase CLI and the Management API instead.
   - Rows changed directly in the database skip the cache tags, so public pages show them within 10 minutes (D-051). `pnpm test:cleanup` deletes test articles the same way.
@@ -92,7 +119,7 @@ Legend: `[x]` done · `[ ]` to do · ⚡ = cut first if behind. The kit's fallba
 - [x] `.mcp.json` has the DEV ref. [ ] Sign in to Supabase + Vercel MCP (`/mcp`)
 - [x] Supabase DEV keys + access token (with database write). [ ] DEV auth URLs, Google + Discord OAuth. [ ] PROD project → **Phase 11**
 - [x] Upstash Redis. [x] Turnstile keys. [ ] Resend key + verified domain + Supabase SMTP → before launch (newsletter is DEV-only until then)
-- [ ] Twitch app + YouTube key → **Phase 5**. Anthropic key + spend limit → **Phase 6**. Voyage key + limit → **Phase 7**
+- [ ] Twitch app + YouTube key (code is ready; empty keys degrade safely, see Phase 5 to-dos). Anthropic key + spend limit → **Phase 6**. Voyage key + limit → **Phase 7**
 - [ ] Domain (no "GTA", "Rockstar" or "Vice City") → **Phase 9/11**. Sentry → **Phase 9**. Vercel → **Phase 11**
 - [x] `.env.local`: `SEED_ADMIN_EMAIL` set. [ ] Check `ADMIN_EMAIL` and `WIKI_CONTACT_EMAIL`
 
@@ -126,10 +153,10 @@ Legend: `[x]` done · `[ ]` to do · ⚡ = cut first if behind. The kit's fallba
 - [x] Turnstile + rate limits on writes (D-063); block; report dialog; QAPage / DiscussionForumPosting; noindex (D-067); bell; `onThreadCreated()` hook; E2E #2 (without AI)
 
 ### 5 · Clips · §6 · Prompt 5
-- [ ] `resolveClip` (both Twitch URL shapes; YouTube watch, youtu.be, shorts; TikTok oEmbed) + fixtures; Twitch token in Redis; GTA VI game-id check; embeddable + ≤ 60 s
-- [ ] /clips/submit, /clips (filters, sorts D-022, votes), /clips/[id] (VideoObject, creator credit, removal link), /clips/top/[week]
-- [ ] twitch-clips + weekly-clips crons (D-012); ClipEmbed facade (notice, `parent=` hosts, nocookie, TikTok on demand); CSP frame-src
-- [ ] /admin/clips (tap, A/R keys, source filter); E2E #4
+- [x] `resolveClip` (both Twitch URL shapes; YouTube watch, youtu.be, shorts; TikTok oEmbed) + fixtures; Twitch token in Redis; GTA VI game-id check; embeddable + ≤ 60 s (D-070, D-071)
+- [x] /clips/submit, /clips (filters, sorts D-022, votes), /clips/[id] (VideoObject, creator credit, removal link), /clips/top/[week]
+- [x] twitch-clips + weekly-clips crons (D-012); ClipEmbed facade (notice, `parent=` hosts, nocookie, TikTok on demand); CSP frame-src (D-073 to D-075)
+- [x] /admin/clips (tap, A/R keys, source filter); E2E #4 with mocked APIs (D-073, D-076)
 
 ### 6 · Moderation & safety · §5 (safety), §8.2, §10 · Prompt 6
 - [ ] AI pre-check (Haiku 5.5, `messages.parse` + zod, 4 s timeout, fallback rule, D-011) on thread/post/clip/bio (D-016)
