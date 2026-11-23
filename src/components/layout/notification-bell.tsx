@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { formatRelativeTime } from "@/lib/format";
 import { describeNotification, type NotificationView } from "@/lib/notifications/format";
-import { getBrowserSupabase } from "@/lib/supabase/browser";
+import { loadBrowserSupabase } from "@/lib/supabase/browser";
 import { markNotificationsRead } from "@/server/notifications/actions";
 
 const LIST_SIZE = 15;
@@ -26,7 +26,7 @@ const REFRESH_MS = 60_000;
  * through a rate-limited Server Action. Refreshes when opened and every minute while visible.
  */
 async function fetchNotifications(userId: string): Promise<{ items: NotificationView[]; unread: number } | null> {
-  const supabase = getBrowserSupabase();
+  const supabase = await loadBrowserSupabase();
   if (!supabase) return null;
   const [list, count] = await Promise.all([
     supabase

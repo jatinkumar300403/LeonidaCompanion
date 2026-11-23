@@ -1,5 +1,5 @@
 import { FLASH_COOKIE, type FlashKey } from "@/lib/flash";
-import { getBrowserSupabase } from "@/lib/supabase/browser";
+import { loadBrowserSupabase } from "@/lib/supabase/browser";
 
 /**
  * Signs out in the browser (clears the session cookies and tells every tab), then reloads, so no
@@ -7,7 +7,7 @@ import { getBrowserSupabase } from "@/lib/supabase/browser";
  */
 export async function signOutAndReload(destination = "/", flash?: FlashKey): Promise<void> {
   if (flash) document.cookie = `${FLASH_COOKIE}=${flash}; Path=/; Max-Age=60; SameSite=Lax`;
-  const supabase = getBrowserSupabase();
+  const supabase = await loadBrowserSupabase();
   try {
     await supabase?.auth.signOut({ scope: "local" });
   } finally {

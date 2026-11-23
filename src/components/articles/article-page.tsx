@@ -98,7 +98,9 @@ export function ArticlePage({ article, related }: { article: Article; related: A
             <h1 className="text-3xl leading-tight font-bold sm:text-4xl">{article.title}</h1>
             <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-2 text-sm text-muted-foreground">
               <Badge variant="tag">{info.label}</Badge>
-              <span>
+              {/* Reserves the width of the longer form, so swapping the date for "2h ago" after
+                  hydration never re-wraps this row on phones (that shifted the body: CLS 0.2). */}
+              <span className="inline-block min-w-[9.75rem]">
                 Updated <RelativeTime date={updated} />
               </span>
               <span className="inline-flex items-center gap-1">

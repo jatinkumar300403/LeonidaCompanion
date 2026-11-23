@@ -4,8 +4,12 @@ import { publicEnv } from "@/env.client";
  * The site's identity. The name lives ONLY here (override with NEXT_PUBLIC_SITE_NAME);
  * never hard-code it anywhere else (CLAUDE.md).
  */
+const name = publicEnv.siteName ?? "Leonida Atlas";
+
 export const siteConfig = {
-  name: publicEnv.siteName ?? "Leonida Atlas",
+  name,
+  /** Home-screen label (PWA manifest): the name itself if short, else its first word. */
+  shortName: name.length <= 12 ? name : (name.split(/\s+/)[0] ?? name).slice(0, 12),
   tagline: "Your unofficial guide to GTA VI",
   description:
     "Unofficial GTA 6 guide and community: tips, features explained, sourced facts, AI answers with citations, a help forum and the best clips.",
@@ -13,6 +17,8 @@ export const siteConfig = {
   /** Every host the site runs on (Twitch embeds need each one as `parent`). */
   hosts: publicEnv.siteHosts,
   showImpressum: publicEnv.showImpressum,
+  /** Public contact address (NEXT_PUBLIC_CONTACT_EMAIL); unset until the domain exists (Q4). */
+  contactEmail: publicEnv.contactEmail,
   locale: "en_US",
   platformsLabel: "PS5 & Xbox Series X|S",
   /** CLAUDE.md rule 3: shown on every page, word for word. */

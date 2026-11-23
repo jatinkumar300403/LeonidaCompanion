@@ -12,6 +12,7 @@ import {
 import { JsonLd } from "@/components/shared/json-ld";
 import { siteConfig } from "@/config/site";
 import { websiteJsonLd } from "@/lib/seo/jsonld";
+import { buildMetadata } from "@/lib/seo/metadata";
 import { getFlags } from "@/server/flags";
 import { getHomeData } from "@/server/home/get-home-data";
 import { getLaunchAt, getLaunchHint } from "@/server/launch";
@@ -21,10 +22,13 @@ import { isNewsletterEnabled } from "@/server/newsletter/status";
 export const revalidate = 60;
 
 export async function generateMetadata(): Promise<Metadata> {
+  const title = `${siteConfig.name} – ${siteConfig.tagline}`;
+  const base = buildMetadata({ title: siteConfig.tagline, path: "/", description: siteConfig.description });
   return {
-    title: { absolute: `${siteConfig.name} – ${siteConfig.tagline}` },
-    description: siteConfig.description,
-    alternates: { canonical: "/" },
+    ...base,
+    title: { absolute: title },
+    openGraph: { ...base.openGraph, title },
+    twitter: { ...base.twitter, title },
   };
 }
 

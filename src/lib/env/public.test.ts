@@ -28,7 +28,12 @@ describe("parsePublicEnv", () => {
       supabasePublishableKey: undefined,
       turnstileSiteKey: undefined,
       sentryDsn: undefined,
+      contactEmail: undefined,
     });
+  });
+
+  it("reads the public contact address (Phase 9)", () => {
+    expect(parsePublicEnv({ NEXT_PUBLIC_CONTACT_EMAIL: " hello@example.com " }).contactEmail).toBe("hello@example.com");
   });
 
   it("strips a trailing slash from the site URL and reads flags", () => {

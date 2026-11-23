@@ -200,7 +200,9 @@ export async function listOpenReports(): Promise<ReportGroup[]> {
 
   const threadIds = numericIds(idsOf("thread"));
   const postIds = numericIds(idsOf("post"));
-  const clipIds = numericIds(idsOf("clip"));
+  // Removal requests (D-098) point at `clip:<id>` when sent from a clip page, else at a path or URL.
+  const dmcaClipIds = numericIds(idsOf("dmca").flatMap((id) => (id.startsWith("clip:") ? [id.slice(5)] : [])));
+  const clipIds = [...new Set([...numericIds(idsOf("clip")), ...dmcaClipIds])];
   const profileIds = idsOf("profile").filter((id) => UUID.test(id));
 
   const [threads, posts, clips, profiles] = await Promise.all([
@@ -255,12 +257,28 @@ export async function listOpenReports(): Promise<ReportGroup[]> {
     });
   }
   for (const row of clips?.data ?? []) {
-    targets.set(`clip:${row.id}`, {
+    const view: ReportTargetView = {
       title: row.title,
       body: row.caption,
       href: row.status === "approved" ? (`/clips/${row.id}` as Route) : ("/admin/clips" as Route),
       status: row.status,
       author: author(row.submitted_by),
+      isSpoiler: false,
+      categoryId: null,
+    };
+    targets.set(`clip:${row.id}`, view);
+    // A removal request is about the clip, not its submitter: no "Ban author" there.
+    targets.set(`dmca:clip:${row.id}`, { ...view, title: `Clip: ${row.title}`, author: null });
+  }
+  for (const group of list) {
+    if (group.targetType !== "dmca" || targets.has(group.key) || group.targetId.startsWith("clip:")) continue;
+    const local = group.targetId.startsWith("/");
+    targets.set(group.key, {
+      title: local ? `Page: ${group.targetId}` : `Outside address: ${group.targetId}`,
+      body: null,
+      href: local ? (group.targetId as Route) : null,
+      status: null,
+      author: null,
       isSpoiler: false,
       categoryId: null,
     });

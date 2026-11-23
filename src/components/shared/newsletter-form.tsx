@@ -1,13 +1,14 @@
 "use client";
 
 import { CheckCircle2 } from "lucide-react";
-import { useActionState, useId, useState } from "react";
+import { useActionState, useEffect, useId, useState } from "react";
 import { TurnstileField } from "@/components/auth/turnstile-field";
 import { submitWithoutReset } from "@/components/shared/form-submit";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { subscribeToNewsletter, type SubscribeState } from "@/server/newsletter/actions";
+import { trackEvent } from "@/lib/analytics/events";
 
 /**
  * Email sign-up for the weekly digest or the Online waitlist (SPEC §9), with double opt-in.
@@ -33,6 +34,10 @@ export function NewsletterForm({
     status: "idle",
   });
   const [engaged, setEngaged] = useState(false);
+  const sent = state.status === "sent";
+  useEffect(() => {
+    if (sent) trackEvent("newsletter_signup", { list });
+  }, [sent, list]);
 
   if (state.status === "sent") {
     return (

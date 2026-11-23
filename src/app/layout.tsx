@@ -1,11 +1,14 @@
 import type { Metadata, Viewport } from "next";
 import { Bricolage_Grotesque, Inter, JetBrains_Mono } from "next/font/google";
+import { Analytics } from "@vercel/analytics/next";
 import { SkipLink } from "@/components/layout/skip-link";
+import { ServiceWorker } from "@/components/pwa/service-worker";
 import { FlashToast } from "@/components/shared/flash-toast";
 import { ThemeProvider } from "@/components/layout/theme-provider";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { siteConfig } from "@/config/site";
+import { RSS_ALTERNATE } from "@/lib/seo/metadata";
 import "./globals.css";
 
 const display = Bricolage_Grotesque({ subsets: ["latin"], variable: "--font-bricolage", display: "swap" });
@@ -20,6 +23,8 @@ export const metadata: Metadata = {
   },
   description: siteConfig.description,
   applicationName: siteConfig.name,
+  alternates: { types: RSS_ALTERNATE },
+  appleWebApp: { capable: true, title: siteConfig.shortName, statusBarStyle: "black-translucent" },
   openGraph: {
     siteName: siteConfig.name,
     type: "website",
@@ -50,6 +55,10 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
             <FlashToast />
           </TooltipProvider>
         </ThemeProvider>
+        {/* The service worker only runs in production builds, so dev and E2E never cache (D-095). */}
+        <ServiceWorker />
+        {/* Vercel Web Analytics exists only on Vercel; elsewhere its script would 404 (D-094). */}
+        {process.env.VERCEL ? <Analytics /> : null}
       </body>
     </html>
   );

@@ -24,7 +24,7 @@ export function FactCard({ fact, className }: { fact: FactSummary; className?: s
           <a
             href={fact.sourceUrl}
             rel="noopener noreferrer"
-            className="relative z-10 mt-auto inline-flex w-fit items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground"
+            className="relative z-10 mt-auto inline-flex min-h-6 w-fit items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground"
           >
             <span>Source: {domain}</span>
             <ExternalLink className="size-3" aria-hidden="true" />

@@ -21,6 +21,7 @@ next-env.d.ts
 /blob-report/
 /playwright/.cache/
 /e2e/.auth/
+/.lighthouseci/
 
 # ── Supabase CLI local state
 /supabase/.temp/

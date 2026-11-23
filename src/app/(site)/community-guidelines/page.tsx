@@ -1,8 +1,6 @@
 import type { Metadata } from "next";
-import Link from "next/link";
-import { PageHeader } from "@/components/shared/headers";
-import { MarkdownRenderer } from "@/components/shared/markdown-renderer";
-import { Badge } from "@/components/ui/badge";
+import { LegalPage } from "@/components/shared/legal-page";
+import { GUIDELINES_UPDATED } from "@/config/legal";
 import { siteConfig } from "@/config/site";
 import { buildMetadata } from "@/lib/seo/metadata";
 
@@ -15,7 +13,6 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 /** SPEC §14: a plain-English draft. The owner reviews it before it's final. */
-const DRAFT_UPDATED = "18 November 2026";
 
 const GUIDELINES = `
 ${siteConfig.name} is a fan community for GTA VI players. These rules keep it useful and friendly. They apply to forum threads and replies, clips, captions, profiles and anything else you post here.
@@ -79,30 +76,17 @@ If you're going through something hard, you don't have to deal with it alone. Pl
 
 ---
 
-${siteConfig.name} is an unofficial fan site. Breaking these guidelines can mean removed posts or a suspended account. See also the [Terms](/terms) and [Privacy](/privacy) pages.
+${siteConfig.name} is an unofficial fan site. Breaking these guidelines can mean removed posts or a suspended account. See also the [Terms](/terms), [Privacy](/privacy) and [Credits](/credits) pages, and the [removal form](/dmca) for creators.
 `;
 
 export default function CommunityGuidelinesPage() {
   return (
-    <div className="page-container max-w-3xl py-10 sm:py-14">
-      <PageHeader
-        eyebrow="Community"
-        title="Community guidelines"
-        description="Be helpful, tag spoilers, and no cheats, exploits, leaks or harassment."
-      />
-      <p className="mt-4 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-        <Badge variant="orange" size="sm">
-          Draft
-        </Badge>
-        <span>
-          Last updated {DRAFT_UPDATED}. Still being reviewed by the site owner; questions go to the{" "}
-          <Link href="/contact" className="underline hover:text-foreground">
-            contact page
-          </Link>
-          .
-        </span>
-      </p>
-      <MarkdownRenderer source={GUIDELINES} className="mt-8" />
-    </div>
+    <LegalPage
+      eyebrow="Community"
+      title="Community guidelines"
+      description="Be helpful, tag spoilers, and no cheats, exploits, leaks or harassment."
+      updated={GUIDELINES_UPDATED}
+      source={GUIDELINES}
+    />
   );
 }

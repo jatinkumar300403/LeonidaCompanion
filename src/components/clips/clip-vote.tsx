@@ -7,7 +7,7 @@ import { toast } from "sonner";
 import { VoteButtons } from "@/components/forum/vote-buttons";
 import { signInPath } from "@/lib/auth/redirect";
 import { formatCount } from "@/lib/format";
-import { getBrowserSupabase } from "@/lib/supabase/browser";
+import { loadBrowserSupabase } from "@/lib/supabase/browser";
 import { voteClip } from "@/server/clips/actions";
 
 /**
@@ -25,9 +25,9 @@ export function ClipVoteScope({ clipIds, children }: { clipIds: readonly number[
 
   useEffect(() => {
     let active = true;
-    const supabase = getBrowserSupabase();
     const ids = key ? key.split(",").map(Number) : [];
     (async () => {
+      const supabase = await loadBrowserSupabase();
       if (!supabase) return setViewer({ userId: null, votes: new Map() });
       const { data } = await supabase.auth.getSession();
       const userId = data.session?.user.id ?? null;

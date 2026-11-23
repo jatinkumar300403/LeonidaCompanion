@@ -5,6 +5,7 @@ pnpm-workspace.yaml
 node_modules
 coverage
 playwright-report
+.lighthouseci
 test-results
 .playwright-mcp
 public

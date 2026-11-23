@@ -10,6 +10,7 @@ import { buildEmbedSrc, PLATFORM_LABELS, twitchParentHosts } from "@/lib/clips/e
 import { formatDuration } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import type { ClipSummary } from "@/types/content";
+import { trackEvent } from "@/lib/analytics/events";
 
 /**
  * Click-to-load facade (SPEC §6, CLAUDE.md rule 1). Nothing from the platform loads until the
@@ -66,9 +67,14 @@ export function ClipEmbed({
   const playing = stage === "playing";
   const tiktok = clip.platform === "tiktok";
 
+  function startPlaying() {
+    setStage("playing");
+    trackEvent("clip_played", { platform: clip.platform, variant });
+  }
+
   function play() {
     if (hasConsent()) {
-      setStage("playing");
+      startPlaying();
       return;
     }
     setStage("consent");
@@ -78,7 +84,7 @@ export function ClipEmbed({
 
   function accept() {
     rememberConsent();
-    setStage("playing");
+    startPlaying();
   }
 
   function decline() {

@@ -1,10 +1,14 @@
 "use client";
 
 import "./globals.css";
+import { useEffect } from "react";
 import { siteConfig } from "@/config/site";
+import { reportClientError } from "@/lib/monitoring/client";
 
-/** Last-resort error page when the root layout itself fails. Sentry hooks in here in Phase 9. */
-export default function GlobalError({ reset }: { error: Error & { digest?: string }; reset: () => void }) {
+/** Last-resort error page when the root layout itself fails. Reported to Sentry when a DSN is set (D-093). */
+export default function GlobalError({ error, reset }: { error: Error & { digest?: string }; reset: () => void }) {
+  useEffect(() => reportClientError(error), [error]);
+
   return (
     <html lang="en">
       <body className="flex min-h-dvh flex-col items-center justify-center gap-6 bg-background p-6 text-center text-foreground">

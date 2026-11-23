@@ -3,13 +3,18 @@
  * Chromium, so no image library is needed:
  *   - src/app/favicon.ico   16, 32 and 48 px PNGs in an ICO container
  *   - src/app/apple-icon.png  180 px, mark on the dark background (iOS ignores transparency)
+ *   - public/icons/icon-{192,512}.png      PWA "any" icons: the mark on transparent (D-095)
+ *   - public/icons/maskable-{192,512}.png  PWA maskable icons: the mark inside the 80% safe zone
+ *     on the dark background, so launchers can crop them to any shape
+ * Only the original mark and its dusk gradient appear: no game art or logos (CLAUDE.md rule 2).
  * Run with `pnpm gen:icons` after changing the mark, then commit the outputs.
  */
-import { readFileSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { chromium } from "@playwright/test";
 
 const appDir = fileURLToPath(new URL("../src/app/", import.meta.url));
+const iconsDir = fileURLToPath(new URL("../public/icons/", import.meta.url));
 const svg = readFileSync(`${appDir}icon.svg`, "utf8");
 const svgDataUrl = `data:image/svg+xml;base64,${Buffer.from(svg).toString("base64")}`;
 
@@ -64,3 +69,14 @@ for (const size of sizes) images.push({ size, png: await render(size) });
 writeFileSync(`${appDir}favicon.ico`, toIco(images));
 writeFileSync(`${appDir}apple-icon.png`, await render(180, { background: "#0a0b10", inset: 22 }));
 console.log("Wrote src/app/favicon.ico (16/32/48) and src/app/apple-icon.png (180)");
+
+mkdirSync(iconsDir, { recursive: true });
+for (const size of [192, 512]) {
+  writeFileSync(`${iconsDir}icon-${size}.png`, await render(size, { inset: Math.round(size * 0.04) }));
+  // Maskable: the mark spans 60% of the canvas, well inside the 80% safe-zone circle.
+  writeFileSync(
+    `${iconsDir}maskable-${size}.png`,
+    await render(size, { background: "#0a0b10", inset: Math.round(size * 0.2) }),
+  );
+}
+console.log("Wrote public/icons/icon-{192,512}.png and public/icons/maskable-{192,512}.png");

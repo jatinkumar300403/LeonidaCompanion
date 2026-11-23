@@ -438,3 +438,130 @@ Context7 wasn't connected in this session (D-001), so look an API up in Context7
   - `e2e/moderation.spec.ts` runs serially and signs its moderator in once per viewport (saved storage state) to save sign-ins.
   - Raising the DEV limit is the owner's call: it's a project setting.
 - **D-090 · 2026-11-18 · Phase 6 dependencies.** Only `@anthropic-ai/sdk`, which is in the stack. Nothing else was added.
+
+### Phase 9 (2026-11-23)
+
+- **D-091 · 2026-11-23 · Phase 9 dependencies** (CLAUDE.md "Don'ts").
+  - From the stack: `@serwist/turbopack` + `serwist` 9.5.15 (D-009), `@sentry/nextjs` 11.16, `@vercel/analytics` 2.0.1.
+  - `esbuild` 0.28 (devDependency): the peer `@serwist/turbopack` bundles the service worker with. Its build script is approved in `pnpm-workspace.yaml` (D-003). `@swc/core`, pulled in by Serwist, is set to `false` like sharp, since its prebuilt binary works without the script.
+  - Outside the stack, both dev-only:
+    - `@axe-core/playwright` for the axe gate (SPEC §15: "axe scan with 0 serious issues");
+    - `@lhci/cli` for Lighthouse (SPEC §15 names Lighthouse CI; it bundles Lighthouse 13 and score assertions).
+    - Neither existed in the repo before.
+- **D-092 · 2026-11-23 · Security headers and the CSP (finishes D-014 and D-075).**
+  - `src/lib/security/headers.ts` builds them (pure, unit-tested), and `next.config.ts` sends them on every path.
+  - **No nonces** (D-014):
+    - `script-src 'self' 'unsafe-inline'`, plus Turnstile, plus TikTok's `embed.js` and its CDNs (`*.tiktokcdn.com`, `*.tiktokcdn-us.com`, `*.ttwstatic.com`; unverifiable from India, D-071);
+    - `'unsafe-eval'` only under `next dev`.
+  - **Allowed hosts:**
+    - `img-src` adds Supabase and the clip thumbnail CDNs (from `CLIP_THUMBNAIL_HOSTS`);
+    - `connect-src` adds Supabase (https + wss), Turnstile and the Sentry ingest origin taken from the DSN;
+    - `frame-src` stays the official players + Turnstile.
+    - Also `object-src 'none'`, `base-uri 'self'`, `form-action 'self'`, `frame-ancestors 'none'`.
+  - **HSTS:** `max-age=63072000; includeSubDomains`, without `preload` until the domain exists (Q4). No `upgrade-insecure-requests`, so a local production build still works over http.
+  - **Permissions-Policy** turns off camera, microphone, geolocation, payment, usb and browsing-topics. It leaves fullscreen, autoplay and encrypted-media alone, because the players need them.
+  - Plus `nosniff` and `X-Frame-Options: DENY`.
+  - Vercel Web Analytics needs no host: on Vercel it is same-origin (`/_vercel/insights`).
+  - Checked on a production build (`e2e-prod/csp.spec.ts`): no violations on `/`, `/tips`, `/forum`, `/clips`, `/privacy` or `/offline`, and Turnstile loads and starts on `/dmca`. Turnstile's own iframe runs under Cloudflare's CSP and logs its own violations, which aren't ours; the spec ignores messages from that origin.
+- **D-093 · 2026-11-23 · Sentry (Risk 4).**
+  - **Off without `NEXT_PUBLIC_SENTRY_DSN`:**
+    - the server and edge configs load only with a DSN;
+    - `onRequestError` is a no-op until then;
+    - the browser never downloads the SDK.
+  - **With a DSN,** the browser SDK loads lazily from `src/instrumentation-client.ts` (a dynamic import), so it stays out of first-load JS and Lighthouse. Errors thrown before it loads aren't reported.
+  - **Reporting:** error boundaries call `reportClientError()`; handled server errors use `captureServerError()`.
+  - **Settings:** `tracesSampleRate` 0.1 in production, `sendDefaultPii: false`, environment from `VERCEL_ENV`.
+  - **Config:** `withSentryConfig` comes from `@sentry/nextjs/config` in v11; the root export no longer has it.
+  - **Source maps** upload only when `SENTRY_AUTH_TOKEN` is set **and** the build runs in CI or on Vercel. Client maps are deleted after upload.
+  - **Turbopack source maps (Risk 4), checked 2026-11-23** with one throwaway build using dummy values (`CI=1`, a fake `SENTRY_AUTH_TOKEN`, a made-up org and project):
+    - Next 16.4's `runAfterProductionCompile` hook ran Sentry's step under Turbopack;
+    - debug IDs were injected into 53 of the 54 client chunks;
+    - the release and the chunk upload were attempted and answered 404, as expected for a made-up org;
+    - no `.map` files were left in `.next/static`;
+    - the build still passed, because upload errors are logged, not fatal.
+    - Only a real upload with the owner's token is left to confirm (Phase 11). If maps don't show up in Sentry then, the fallback is `next build --webpack` in CI (D-009 style), which uses Sentry's webpack plugin.
+- **D-094 · 2026-11-23 · Analytics events (SPEC §13).**
+  - `<Analytics />` renders only when `VERCEL` is set. Elsewhere its script 404s, which would cost Lighthouse Best Practices.
+  - `trackEvent()` (`src/lib/analytics/events.ts`) accepts only the 8 SPEC events, with at most 6 small primitive props: never ids, emails or free text. It never throws.
+  - **Browser events:**
+    - `ask_submitted`: on the /ask page, since the AskBox is a plain GET form;
+    - `ask_feedback`;
+    - `clip_played`: facade → player;
+    - `article_helpful`;
+    - `newsletter_signup`;
+    - `pwa_installed`: on `appinstalled`.
+  - **Server events:** `thread_created` and `post_created` are sent from the Server Actions with `@vercel/analytics/server` inside `after()`, because creating a thread redirects. They run only on Vercel.
+- **D-095 · 2026-11-23 · PWA (finishes D-009).**
+  - **The worker** is built from `src/app/sw.ts` and served at `/serwist/sw.js` with:
+    - `Service-Worker-Allowed: /` (set by Serwist's route);
+    - `Cache-Control: no-cache`.
+    - It is registered with scope `/` by `src/components/pwa/service-worker.tsx`: a few lines after the `load` event, production builds only, so dev and E2E never cache. This replaces `@serwist/turbopack/react`'s provider (about 9 KB of first-load JS).
+    - The component also sends each client-side navigation to the worker as `CACHE_URLS`, which Serwist handles. Without it, pages reached by client navigation wouldn't be cached for offline reading.
+  - **Caching rules** live in `src/lib/pwa/cache-rules.ts` (pure, tested):
+    - cache-first for hashed assets and icons;
+    - stale-while-revalidate for `/_next/image`, and for guide pages (`/tips|features|facts|online/<slug>`, `/launch`) so they read offline;
+    - network-first (4 s) for other public pages;
+    - network-only for admin, account, auth, API and form pages, `/u/` and `/search`.
+    - RSC payloads aren't cached. Offline, Next falls back to a full navigation, which the worker answers.
+  - **Precache** is limited to the CSS, the preloaded Latin font files (`*.p.*.woff2`), the icons and `/offline`: 10 entries, 278 KB. Serwist's default precached every chunk: 67 entries, 2.6 MB, admin code included. JS chunks are cached as pages are visited.
+  - **`/offline`** is precached with the commit as its revision and stands in for any page that can't be loaded:
+    - it lists the guides saved on the device;
+    - "Try again" is a plain link, so it works even when the page's JS isn't cached;
+    - it reloads by itself when the connection comes back.
+  - **Known trade-off:** a guide served stale right after a deploy can reference old JS chunks. The text still reads, and the next load is fresh.
+  - **The manifest** uses SPEC's dusk `theme_color` (#ff3d8b) and a dark background; pages override the bar colour with their own theme-color.
+  - **Icons** (`pnpm gen:icons`) are the original mark only: 192/512 "any" on transparent, and 192/512 maskable on #0a0b10 with the mark inside the safe zone.
+  - **The install banner:**
+    - shows from the 2nd visit (one visit per browser session);
+    - never shows when the app is installed or running standalone;
+    - sleeps 30 days after "Not now";
+    - iOS Safari gets a Share → Add to Home Screen hint.
+    - `beforeinstallprompt` is captured in `instrumentation-client.ts`, before hydration, so it isn't missed.
+- **D-096 · 2026-11-23 · SEO files.**
+  - **Sitemaps:** Next 16's `generateSitemaps` doesn't write an index, so `/sitemap.xml` is a route. It lists `/sitemaps/<section>.xml` for pages, tips, features, facts, forum and clips, each with its newest `lastmod`.
+  - **Reads:** everything is read as `anon` (RLS decides) and cached for an hour under the existing tags (`articles`, `forum`, `clips`, `clips-weekly`, `site-settings`).
+  - **Forum entries** skip thin threads and deleted questions, using the thread page's own noindex rule. `threads.excerpt` (the first 280 characters) stands in for the body length.
+  - **`/rss.xml`:** the newest 50 spoiler-free tips, features and facts (rule 5), linked from every page's head.
+  - **`robots.txt`** keeps admin, account, auth, API (except `/api/og`), form, search and offline pages out, and blocks everything on Vercel Preview deploys.
+  - **OG images:**
+    - `buildMetadata` now gives every page a default `/api/og` card for its own title and section;
+    - `/api/og` draws in Bricolage Grotesque, fetched from Google Fonts as a TrueType subset with a 3 s timeout, falling back to the default font.
+  - **Tests:**
+    - every page must export metadata, and the private pages must be noindex (`route-metadata.test.ts`);
+    - every JSON-LD builder must match Google's required shape (`jsonld-shapes.test.ts`).
+- **D-097 · 2026-11-23 · Legal pages.**
+  - **Drafts:** disclaimer, privacy, terms, content removal, credits and the optional impressum are plain-English drafts on one `LegalPage` layout.
+    - Each has a Draft badge and "Last updated 23 November 2026" (the guidelines keep 18 November).
+    - They describe what the code actually does. Owner review points are listed in PROGRESS.
+  - **Privacy** names the SPEC processors plus the embed platforms, which load only after a click.
+  - **`/contact`** needs a public address that isn't the owner's own, so there's a new optional `NEXT_PUBLIC_CONTACT_EMAIL`. Until it's set, the page points to the removal form and Report.
+  - **The impressum** stays behind `NEXT_PUBLIC_SHOW_IMPRESSUM`, as a template with bracketed fields to fill in.
+- **D-098 · 2026-11-23 · Content-removal form (`/dmca`, finishes D-076).**
+  - **Fields:**
+    - name, email, page URL;
+    - how it's theirs (creator / acting for the owner / other);
+    - a description;
+    - a good-faith statement that must be ticked.
+    - `?clip=<id>` pre-fills an approved clip.
+  - **Guards:** it's a public write, so zod, Upstash limits (5 an hour per IP, 3 a day per email address), then Turnstile, which mounts on first focus. `e2e-…@example.com` skips the limits and Turnstile under `next dev`, like the newsletter (D-046).
+  - **Insert:** visitors without an account can send one, and RLS only lets members report as themselves. So the row is inserted with the service role from `src/server/admin/removal-requests.ts`:
+    - `target_type 'dmca'`, `reason 'copyright'`;
+    - `reporter_id` = the session user, or null;
+    - `target_id` = `clip:<id>` from a clip page, else the same-site path, else the address (200 characters max);
+    - the details hold the name, email, role, URL and description (2000 characters max).
+  - **Email:** the admin gets one (Resend; the dev outbox in `next dev`; skipped with a log line without a key). The requester gets nothing, so the form can't send mail to a third party.
+  - **Queue:** in the Reports queue, a removal request shows the clip (no "Ban author") or an Open link for the page. The moderator removes the clip in `/admin/clips`, then marks the request handled.
+- **D-099 · 2026-11-23 · Performance budgets and audits (finishes D-026).**
+  - **Bundles:** Next 16.4 has `next analyze` for Turbopack bundles, used to diagnose. The budget itself is enforced on a production build by `e2e-prod/budgets.spec.ts`: compressed JS transferred on first load, ≤ 150 KB on article pages, with a 200 KB ceiling elsewhere.
+  - **Production-only checks:** `playwright.prod.config.ts` (`pnpm e2e:prod`) runs the service-worker, CSP and budget checks against `pnpm start`. It never reuses a server, so it can't test a dev server by mistake.
+  - **Lighthouse:** `pnpm lhci` runs Lighthouse CI (mobile, 3 runs, median) on `/`, a tip page, `/forum` and `/clips` with Playwright's Chromium, and asserts ≥ 0.95 per category. DEV has no published tip, so `pnpm qa:sample-tip publish|unpublish` toggles one `[SAMPLE]` tip for the audit.
+  - **axe:** `e2e/a11y.spec.ts` runs axe (WCAG 2.0–2.2 A/AA + best practices) on every public page a visitor can reach, on both viewports, in dark and light. It fails on any serious or critical issue.
+  - **First-load JS:** the budget counts the scripts the server HTML references, gzipped, skipping Next's `noModule` polyfills that modern browsers never fetch. To shrink it:
+    - the browser Supabase client is loaded with `import()` on first use (`loadBrowserSupabase()`; every caller already ran after hydration). That's about 65 KB.
+    - the Turnstile widget loads through `next/dynamic` inside `TurnstileField`;
+    - the signed-in account menu and notification bell (`AccountMenu`) load only for signed-in visitors.
+    - Result: 216–236 KB (it was about 300 KB). SPEC's 150 KB isn't met: Next's router + React DOM are about 130 KB. The spec fails above 240 KB as a ratchet, and the gap is a known issue in PROGRESS.
+  - **Lighthouse findings fixed:**
+    - On `/`, Lighthouse took the hero's film-grain noise (a full-hero image layer) as the LCP element and simulated 4.5 s, even though Chrome's own LCP API reports the hero text at first paint. The grain is now a `mask-image` over grey and shows from the `lg` breakpoint up only, where it's actually visible.
+    - On article pages, the "Updated" date swapped from the server's full date to "2h ago" after hydration, which re-wrapped the meta row on phones (CLS 0.2). The slot now reserves the width of the longer form.
+  - **Windows note:** Lighthouse's chrome-launcher can't spawn Chromium from this machine's sandboxed shells (`spawn UNKNOWN`). `lighthouserc.cjs` accepts `LHCI_CHROME_PORT`, so it reuses a Chromium started with `--remote-debugging-port` (for example by Playwright). Linux CI doesn't need this.

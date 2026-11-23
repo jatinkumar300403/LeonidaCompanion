@@ -4,6 +4,7 @@ import { MessagesSquare, Sparkles } from "lucide-react";
 import { AskBox } from "@/components/ask/ask-box";
 import { PageHeader } from "@/components/shared/headers";
 import { EmptyState } from "@/components/shared/states";
+import { TrackEvent } from "@/components/shared/track-event";
 import { Button } from "@/components/ui/button";
 import { SUGGESTED_QUESTIONS } from "@/config/site";
 import { routes } from "@/lib/routes";
@@ -29,6 +30,8 @@ export default async function AskPage({ searchParams }: PageProps<"/ask">) {
         title="Ask anything about GTA VI"
         description="Short answers that cite their sources. When the sources don't cover it, you'll see “Not confirmed yet”."
       />
+      {/* The AskBox is a plain GET form, so a question arriving here is the submission (D-094). */}
+      {question ? <TrackEvent name="ask_submitted" props={{ length: question.length }} /> : null}
       <AskBox className="mt-8 max-w-3xl" defaultValue={question} suggestions={question ? [] : SUGGESTED_QUESTIONS} />
       <EmptyState
         className="mt-10"

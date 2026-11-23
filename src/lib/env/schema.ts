@@ -40,6 +40,7 @@ const publicSchema = z.object({
   NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: optionalString,
   NEXT_PUBLIC_TURNSTILE_SITE_KEY: optionalString,
   NEXT_PUBLIC_SENTRY_DSN: httpUrl.optional(),
+  NEXT_PUBLIC_CONTACT_EMAIL: z.email().optional(),
 });
 
 export const serverEnvSchema = publicSchema.extend({

@@ -2,6 +2,7 @@
 
 import type { Route } from "next";
 import { updateTag } from "next/cache";
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { after } from "next/server";
 import { slugify } from "@/lib/articles/slug";
@@ -21,6 +22,7 @@ import {
   voteSchema,
 } from "@/lib/validation/forum";
 import { holdContent } from "@/server/admin/moderation";
+import { trackServerEvent } from "@/server/analytics";
 import { isTestIdentity } from "@/server/admin/test-auth";
 import { getSession, type CompleteSession } from "@/server/auth/session";
 import { requestContext } from "@/server/auth/request";
@@ -165,6 +167,10 @@ export async function createThread(_prev: FormState, formData: FormData): Promis
 
   invalidate();
   after(() => recordPrecheck(precheck, { targetId: data.id, session: member, excerpt }));
+  const requestHeaders = await headers();
+  after(() =>
+    trackServerEvent("thread_created", { category: category.slug, held, spoiler: isSpoiler }, requestHeaders),
+  );
   // A held thread isn't public yet: Phase 8's AI suggestion waits until it is (D-080).
   if (!held) {
     after(() =>
@@ -346,6 +352,8 @@ export async function createPost(_prev: ReplyState, formData: FormData): Promise
 
   invalidate(input.threadId);
   after(() => recordPrecheck(precheck, { targetId: data.id, session: member, excerpt }));
+  const requestHeaders = await headers();
+  after(() => trackServerEvent("post_created", { held, quote: Boolean(input.replyToPostId) }, requestHeaders));
   return held
     ? { status: "posted", postId: data.id, at: Date.now(), held: true, message: precheck.message ?? undefined }
     : { status: "posted", postId: data.id, at: Date.now() };

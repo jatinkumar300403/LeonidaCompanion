@@ -15,6 +15,8 @@ export type PublicEnv = {
   supabasePublishableKey: string | undefined;
   turnstileSiteKey: string | undefined;
   sentryDsn: string | undefined;
+  /** Public contact address shown on /contact; never the admin's own address. */
+  contactEmail: string | undefined;
 };
 
 export type RawPublicEnv = {
@@ -26,6 +28,7 @@ export type RawPublicEnv = {
   NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY?: string;
   NEXT_PUBLIC_TURNSTILE_SITE_KEY?: string;
   NEXT_PUBLIC_SENTRY_DSN?: string;
+  NEXT_PUBLIC_CONTACT_EMAIL?: string;
 };
 
 function clean(value: string | undefined): string | undefined {
@@ -56,5 +59,6 @@ export function parsePublicEnv(raw: RawPublicEnv): PublicEnv {
     supabasePublishableKey,
     turnstileSiteKey: clean(raw.NEXT_PUBLIC_TURNSTILE_SITE_KEY),
     sentryDsn: clean(raw.NEXT_PUBLIC_SENTRY_DSN),
+    contactEmail: clean(raw.NEXT_PUBLIC_CONTACT_EMAIL),
   };
 }

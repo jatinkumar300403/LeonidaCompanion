@@ -121,7 +121,7 @@ export function ReportQueue({
               {target ? (
                 <div className="flex flex-col gap-2">
                   <h2 className="font-semibold break-words">{target.title}</h2>
-                  {group.targetType !== "profile" ? (
+                  {group.targetType !== "profile" && group.targetType !== "dmca" ? (
                     <p className="text-sm text-muted-foreground">
                       by <PersonLink person={target.author} />
                     </p>

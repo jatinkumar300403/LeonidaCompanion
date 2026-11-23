@@ -76,6 +76,8 @@ const sweeps = [
   admin.from("ingest_runs").delete().like("source_id", "rls-%"),
   admin.from("knowledge_chunks").delete().like("source_ref", "rls-%"),
   admin.from("reports").delete().is("reporter_id", null).eq("reason", "spam").eq("target_type", "post"),
+  // Phase 9: removal requests sent by the E2E tests (anonymous, from e2e-…@example.com addresses).
+  admin.from("reports").delete().eq("target_type", "dmca").like("details", "%<e2e-%@example.com>%"),
 ];
 for (const sweep of sweeps) {
   const { error } = await sweep;

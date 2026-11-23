@@ -6,7 +6,7 @@ import { useEffect, useState } from "react";
 import { ReportDialog } from "@/components/forum/report-dialog";
 import { Button } from "@/components/ui/button";
 import { signInPath } from "@/lib/auth/redirect";
-import { getBrowserSupabase } from "@/lib/supabase/browser";
+import { loadBrowserSupabase } from "@/lib/supabase/browser";
 
 /** "Report" under a clip (SPEC §5 reasons): reports go to the moderation queue (Phase 6). */
 export function ClipReportButton({ clipId, returnTo }: { clipId: number; returnTo: string }) {
@@ -14,10 +14,10 @@ export function ClipReportButton({ clipId, returnTo }: { clipId: number; returnT
   const [open, setOpen] = useState(false);
 
   useEffect(() => {
-    const supabase = getBrowserSupabase();
-    if (!supabase) return;
     let active = true;
-    supabase.auth.getSession().then(({ data }) => {
+    void loadBrowserSupabase().then(async (supabase) => {
+      if (!supabase) return;
+      const { data } = await supabase.auth.getSession();
       if (active) setSignedIn(Boolean(data.session));
     });
     return () => {

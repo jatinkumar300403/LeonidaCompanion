@@ -8,7 +8,7 @@ export async function proxy(request: NextRequest) {
 
 export const config = {
   matcher: [
-    // Everything except build assets, image optimisation and static files.
-    "/((?!_next/static|_next/image|favicon.ico|icon.svg|apple-icon.png|robots.txt|sitemap.xml|manifest.webmanifest|.*\\.(?:svg|png|jpg|jpeg|gif|webp|avif|ico|txt|xml|woff2?)$).*)",
+    // Everything except build assets, image optimisation, the service worker, feeds and static files.
+    "/((?!_next/static|_next/image|serwist/|icons/|favicon.ico|icon.svg|apple-icon.png|robots.txt|sitemap.xml|sitemaps/|rss.xml|manifest.webmanifest|.*\\.(?:svg|png|jpg|jpeg|gif|webp|avif|ico|txt|xml|woff2?)$).*)",
   ],
 };

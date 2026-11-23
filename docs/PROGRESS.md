@@ -1,6 +1,6 @@
 # PROGRESS — Leonida Atlas
 
-Launch: **Thu 19 Nov 2026**. Last updated: 2026-11-18 (Phase 6). Spec: `docs/SPEC.md`. Decisions: `docs/DECISIONS.md` (D-xxx).
+Launch: **Thu 19 Nov 2026**. Last updated: 2026-11-23 (Phase 9). Spec: `docs/SPEC.md`. Decisions: `docs/DECISIONS.md` (D-xxx).
 Legend: `[x]` done · `[ ]` to do · ⚡ = cut first if behind. The kit's fallback: ship 0–6 and 9–11 on launch day, then 7–8 on the 20th.
 
 ## Status
@@ -97,9 +97,84 @@ Legend: `[x]` done · `[ ]` to do · ⚡ = cut first if behind. The kit's fallba
   - QA rows and test users were removed with `pnpm test:cleanup`, which now also sweeps reports filed by test users and audit rows about them.
   - Two leftover audit rows from Phase 2's first RLS run were deleted.
   - DEV ends with no test users, threads, held items, reports, audit rows or clips, the flags all off, and Online locked.
-- **Next:** Phase 9 (Prompt 9: SEO, PWA, analytics, legal, performance) for launch day. Phases 7–8 (wiki ingestion, Ask AI) move to Fri 20 Nov (kit cut line).
+- **Done: Phase 9.**
+  - SEO, PWA, analytics, legal, performance (D-091 to D-099):
+    - **SEO:**
+      - every page has metadata and a default `/api/og` card (in Bricolage Grotesque now);
+      - `/sitemap.xml` is an index over `/sitemaps/{pages,tips,features,facts,forum,clips}.xml` with `lastmod`;
+      - `/rss.xml` (spoiler-free guides), linked from every page;
+      - `robots.txt`, with Preview deploys blocked.
+      - Unit tests check that every route has metadata, that the private pages are noindex, and that every JSON-LD builder matches Google's required shape.
+    - **PWA:**
+      - the manifest, with maskable icons from the original mark;
+      - the service worker at `/serwist/sw.js` with scope `/`;
+      - caching per SPEC §13 (guides use stale-while-revalidate and read offline);
+      - a lean precache (278 KB: CSS, Latin fonts, icons, `/offline`);
+      - `/offline` lists the guides saved on the device;
+      - the install banner from the 2nd visit (with an iOS hint), and `pwa_installed`.
+    - **Analytics:** Vercel Web Analytics (on Vercel only) and the 8 SPEC §13 events; `thread_created` and `post_created` are sent server-side.
+    - **Sentry:** client, server and edge. It does nothing without a DSN, the browser SDK loads lazily, and source maps upload from CI/Vercel only.
+    - **Security:** the strict CSP (no nonces, D-014), plus HSTS, Referrer-Policy, Permissions-Policy, nosniff and X-Frame-Options.
+    - **Legal:** dated drafts with a Draft badge on one `LegalPage` layout: disclaimer, privacy, terms, content removal, credits and an impressum template. Plus a contact page.
+    - **`/dmca` form:**
+      - anyone can send one, behind Turnstile and rate limits;
+      - stored as a `dmca` report (service role);
+      - the admin is emailed (dev outbox without Resend);
+      - `?clip=` pre-fills the clip;
+      - the Reports queue shows the clip.
+    - **Performance pass:**
+      - the browser Supabase client, the Turnstile widget and the signed-in account menu load on demand;
+      - Serwist's 9 KB React provider was replaced by a few lines of registration;
+      - a fact-card link fixed for WCAG 2.2 target size;
+      - the article "Updated" line no longer shifts the page (CLS 0.2 → 0);
+      - the hero grain shows from `lg` up only (Lighthouse took it as the LCP element and simulated 4.5 s).
+  - **Lighthouse mobile** (production build, `pnpm lhci`, median of 3 runs):
+
+    | Page | Performance | Accessibility | Best practices | SEO |
+    | --- | --- | --- | --- | --- |
+    | `/` | 100 | 100 | 100 | 100 |
+    | `/tips/sample-tip-1` | 100 | 100 | 100 | 100 |
+    | `/forum` | 100 | 100 | 100 | 100 |
+    | `/clips` | 100 | 100 | 100 | 100 |
+
+    LCP 1.2 s, CLS 0 and TBT 18–33 ms on all four (simulated slow 4G). Before the fixes, `/` scored 86 and the tip page 90.
+  - **axe:** `e2e/a11y.spec.ts` checks 20 public pages × 2 viewports × dark and light: 0 serious or critical issues. One was fixed on the way (a fact card's source link was under 24 px).
+  - **JS budget** (`e2e-prod/budgets.spec.ts`, gzipped first-load JS): 216–236 KB, down from about 300 KB. It's still over SPEC's 150 KB for article pages, because Next's router and React DOM alone are about 130 KB. The spec now fails if a page grows past 240 KB; see Known issues.
+  - **Sentry source maps under Turbopack (Risk 4):** the build hook runs and injects debug IDs, and the upload was attempted with a dummy token (404, as expected). Only a real upload with the owner's token is left (D-093).
+  - **Checks:**
+    - `pnpm typecheck` (now also type-checks the service worker against `tsconfig.sw.json`), `lint`, `format:check` and `build` pass;
+    - `pnpm test`: 789 unit tests, plus 11 live tests that skip without a key;
+    - `pnpm test:db`: 87 tests;
+    - `pnpm e2e --workers=4`: 154 passed, 12 viewport skips. New specs: `e2e/seo-pwa.spec.ts`, `e2e/legal.spec.ts` (the removal form, anonymous) and `e2e/a11y.spec.ts` (axe);
+    - `pnpm e2e:prod` on a production build: 22 passed, 10 skips (viewport duplicates, plus the clip-player check, which needs an approved clip and DEV has none). It covers the service worker controlling `/`, offline fallback, CSP with Turnstile, and the budgets;
+    - `pnpm lhci` assertions pass.
+  - **Visual QA:**
+    - 41 captures at 390 and 1440, dark and light, taken with a Playwright script;
+    - pages: the legal pages, `/dmca` (field errors and success), `/offline` and the install banner (the prompt and the iOS hint);
+    - no horizontal overflow;
+    - fixes made during the check:
+      - the Turnstile box on `/dmca` is reserved from the start, because mounting it on first focus pushed the Send button down, so a first click on Send missed it;
+      - the install banner is fully opaque;
+      - the privacy page names the real "Export my data" button.
+  - DEV was cleaned with `pnpm test:cleanup`: no reports, test users, E2E articles, threads or clips, and `sample-tip-1` is back to draft.
+- **Next:** Phase 10 (Prompt 10: QA hardening), then Phase 11 (production deploy). Phases 7–8 (wiki ingestion, Ask AI) follow (kit cut line).
   - Phase 8 must run `onThreadCreated()` when a mod approves a held Q&A thread (D-080).
-  - Phase 9's legal pages can link the guidelines draft.
+  - Phase 8 should fire `ask_submitted` and `ask_feedback` from the real Ask flow; today they're wired to the stub page and `AnswerActions`.
+  - Phase 10 can rerun `pnpm e2e:prod` and `pnpm lhci` on a fresh build (D-099 has the Windows Chromium note).
+- **Owner to-dos from Phase 9:**
+  - **Sentry:**
+    - create the project;
+    - set `NEXT_PUBLIC_SENTRY_DSN`, `SENTRY_AUTH_TOKEN`, `SENTRY_ORG` and `SENTRY_PROJECT` in Vercel (Production and Preview);
+    - after the first Vercel build, check that a test error shows readable stack traces. If it doesn't, build with `next build --webpack` in CI (D-093).
+  - **`NEXT_PUBLIC_CONTACT_EMAIL`:** a public address on the new domain, not your personal one. Until it's set, `/contact` points to the removal form.
+  - **Review the legal drafts:** `/disclaimer`, `/privacy`, `/terms`, `/dmca` and `/credits`, plus `/community-guidelines` from Phase 6. Then remove each Draft badge with `draft={false}` on its `LegalPage`. Points to decide:
+    - who runs the site (the data controller);
+    - the governing law in the Terms;
+    - whether the retention wording is what you want;
+    - the "usually within 24 hours" promise on `/dmca`.
+  - **Impressum** (only if you operate commercially from Germany): fill in the bracketed fields in `src/app/(site)/impressum/page.tsx`, then set `NEXT_PUBLIC_SHOW_IMPRESSUM=true`.
+  - **Resend** (already listed): until it's set, removal requests reach only the Reports queue in production; the admin email is skipped with a log line.
+  - **Check `ADMIN_EMAIL` in Vercel:** removal requests are emailed there.
 - **Owner to-dos from Phase 6:**
   - **Add `ANTHROPIC_API_KEY` before launch.** Until then the SPEC §8.2 fallback holds every thread and reply from members under 20 reputation (almost everyone on day one), and those members can't save a bio. `/admin/moderation` says so in a banner.
   - **Set a spend limit** in the Anthropic Console. A check costs about $0.0001–0.0003 with Haiku 5.5 at $0.10 / $0.50 per MTok.
@@ -140,15 +215,12 @@ Legend: `[x]` done · `[ ]` to do · ⚡ = cut first if behind. The kit's fallba
   - Sample clips use fake ids, so a loaded embed shows the platform's "unavailable" message.
   - TikTok is blocked in India: this machine resolves `www.tiktok.com` to an ISP "restricted" page. TikTok's live oEmbed and `embed.js` couldn't be checked here, and visitors in India won't see TikTok thumbnails or players (D-071).
   - The platform fixtures follow the documented responses, not recorded live ones (no keys yet). See the Phase 5 owner to-dos.
-  - `/dmca` is still a stub: the "I'm the creator: remove this" link sends `?clip=<id>`, which Phase 9's removal form must read (D-076).
-  - The CSP so far covers `frame-src`, `object-src` and `base-uri` only. Phase 9 adds the rest (D-075).
   - Clip pages, lists and weekly pages are cached (D-073), so rows changed directly in the database show up after the cache expires, as with articles and the forum.
   - ESLint 9 shows npm's deprecation warning. It stays until the plugins support ESLint 10 (D-034).
   - The Supabase and Vercel MCP servers still need the owner's sign-in. Context7 and Playwright work. Phases 2–3 used the Supabase CLI and the Management API instead.
   - Rows changed directly in the database skip the cache tags, so public pages show them within 10 minutes (D-051). `pnpm test:cleanup` deletes test articles the same way.
   - `pnpm seed:dev` prints Node's "module type" warning (the repo has no `"type": "module"`). It is harmless.
   - `next dev` regenerates a managed `AGENTS.md`; it is gitignored (D-060).
-  - The OG image uses the default font, not Bricolage Grotesque (Phase 9 can load the font file).
   - **No `ANTHROPIC_API_KEY` yet:** the AI pre-check runs on the §8.2 fallback. Members under 20 reputation are held for review and can't save a bio. See the Phase 6 owner to-dos.
   - The AI pre-check runs in Server Actions only. A member writing through the PostgREST API with their own JWT skips it; the database limits still apply (D-088, post-launch fix).
   - A held Q&A thread that a mod approves gets no AI suggested answer yet. Phase 8 should call `onThreadCreated()` on approval (D-080).
@@ -157,6 +229,18 @@ Legend: `[x]` done · `[ ]` to do · ⚡ = cut first if behind. The kit's fallba
   - DEV's `site_settings.flags` row has no `SHADOW_HOLD_NEW_USERS` key (the seed doesn't overwrite rows). It reads as off, and the first save on `/admin/settings` writes it.
   - Full E2E runs use about 28 of DEV's 30 magic-link verifications per 5 minutes: space runs 5+ minutes apart, and prefer `--workers=4` (D-089).
   - Forum lists and thread pages serve stale data for one request after their 30 s cache expires (stale-while-revalidate, D-064). Rows changed directly in the database show up on the next load.
+  - **JS budget:** first-load JS is 216–236 KB gzipped, against SPEC's 150 KB for article pages.
+    - Next's router and React DOM are about 130 KB of that.
+    - The rest is mostly Radix in the shell (the More sheet, the theme menu, the tooltip provider), sonner, next/image and the Turbopack runtime.
+    - Lighthouse still scores 100 (TBT under 35 ms on simulated mobile).
+    - Post-launch: load the More sheet and the toaster on demand. `e2e-prod/budgets.spec.ts` fails if any page grows past 240 KB (D-099).
+  - The TikTok CSP hosts (`*.tiktokcdn.com`, `*.tiktokcdn-us.com`, `*.ttwstatic.com`) can't be checked from India (D-071, D-092). Check `embed.js` from another region after launch.
+  - Sentry source maps are checked up to the upload; the upload itself needs the owner's token (D-093).
+  - The film grain on hero areas now shows from the `lg` breakpoint only (D-099).
+  - The service worker precaches only CSS, Latin fonts, icons and `/offline`; JS chunks are cached as pages are visited. A guide opened offline before its chunks were cached still reads, but without interactive bits (D-095).
+  - On this Windows machine, Lighthouse can't start Chromium itself (`spawn UNKNOWN`). Start Chromium with `--remote-debugging-port=9222` (for example through Playwright), then run `LHCI_CHROME_PORT=9222 pnpm lhci`. Linux CI doesn't need this.
+  - The forum thread, reply and clip-submit forms mount Turnstile on first focus, right above their submit button. If someone's first interaction were a click on that button, the widget would push it down and the click would miss. Today those buttons stay disabled until something is typed, so it can't happen, but Phase 10 should reserve the box as `/dmca` now does.
+  - `/about` is still a stub ("This page is being written"). Phase 10's empty-state review, or the owner, should write it.
 
 ## Owner setup (docs/SETUP.md) → needed by
 - [x] Node 24.18 LTS, pnpm 12.21 (corepack, D-003), Git 2.55, Playwright Chromium; `CRON_SECRET` + `ANON_HASH_SALT` in `.env.local`
@@ -164,7 +248,7 @@ Legend: `[x]` done · `[ ]` to do · ⚡ = cut first if behind. The kit's fallba
 - [x] Supabase DEV keys + access token (with database write). [ ] DEV auth URLs, Google + Discord OAuth. [ ] PROD project → **Phase 11**
 - [x] Upstash Redis. [x] Turnstile keys. [ ] Resend key + verified domain + Supabase SMTP → before launch (newsletter is DEV-only until then)
 - [ ] Twitch app + YouTube key (code is ready; empty keys degrade safely, see Phase 5 to-dos). Anthropic key + spend limit → **before launch** (Phase 6 code is ready; see its owner to-dos). Voyage key + limit → **Phase 7**
-- [ ] Domain (no "GTA", "Rockstar" or "Vice City") → **Phase 9/11**. Sentry → **Phase 9**. Vercel → **Phase 11**
+- [ ] Domain (no "GTA", "Rockstar" or "Vice City") → **Phase 11**. Sentry DSN + token → **Phase 11** (code ready since Phase 9). Vercel → **Phase 11**
 - [x] `.env.local`: `SEED_ADMIN_EMAIL` set. [ ] Check `ADMIN_EMAIL` and `WIKI_CONTACT_EMAIL`
 
 ## Build plan (phase · SPEC sections · deliverables)
@@ -217,10 +301,11 @@ Legend: `[x]` done · `[ ]` to do · ⚡ = cut first if behind. The kit's fallba
 - [ ] `onThreadCreated()` AI suggestion; /admin/gaps; MSW mocks; 15-question eval; E2E #5 + the AI part of #2
 
 ### 9 · SEO, PWA, analytics, legal, performance · §13, §14 · Prompt 9
-- [ ] Metadata audit, canonicals, noindex, sitemaps, rss, robots, JSON-LD tests, `/api/og`
-- [ ] PWA via `@serwist/turbopack` (D-009); Vercel Analytics events; Sentry client/server/edge (check Turbopack source maps)
-- [ ] Security headers + CSP (D-014); legal pages; /dmca form → reports + email
-- [ ] Budgets (D-026), Lighthouse mobile ≥ 95, axe with 0 serious issues
+- [x] Metadata audit, canonicals, noindex, sitemaps, rss, robots, JSON-LD tests, `/api/og` (D-096)
+- [x] PWA via `@serwist/turbopack` (D-009, D-095); Vercel Analytics events (D-094); Sentry client/server/edge, with Turbopack source maps checked up to the upload (D-093)
+- [x] Security headers + CSP (D-014, D-092); legal pages (D-097); /dmca form → reports + email (D-098)
+- [x] Lighthouse mobile 100 in every category on the four pages; axe with 0 serious issues (D-099)
+- [ ] JS budget: 216–236 KB first load vs SPEC's 150 KB (known issue)
 
 ### 10 · QA hardening · §15 · Prompt 10
 - [ ] All E2E (mobile + desktop); RLS attacks; auth/zod/rate-limit/Turnstile audit; XSS payload list; open redirects; cron secret

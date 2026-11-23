@@ -7,10 +7,16 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { routes } from "@/lib/routes";
 import { cn } from "@/lib/utils";
+import { trackEvent } from "@/lib/analytics/events";
 
 /** 👍/👎, Copy and "Ask the community" under an AI answer (SPEC §8.1). UI only until Phase 8. */
 export function AnswerActions({ question, answer }: { question: string; answer: string }) {
-  const [feedback, setFeedback] = useState<1 | -1 | 0>(0);
+  const [feedback, setFeedbackState] = useState<1 | -1 | 0>(0);
+
+  function setFeedback(value: 1 | -1 | 0) {
+    setFeedbackState(value);
+    if (value !== 0) trackEvent("ask_feedback", { helpful: value === 1 });
+  }
 
   async function copy() {
     try {

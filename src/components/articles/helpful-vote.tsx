@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { formatCount } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { voteHelpful } from "@/server/articles/feedback";
+import { trackEvent } from "@/lib/analytics/events";
 
 type Vote = -1 | 0 | 1;
 
@@ -57,6 +58,7 @@ export function HelpfulVote({ articleId, up, down }: { articleId: string; up: nu
       const result = await voteHelpful(articleId, value);
       if (result.ok) {
         writeVote(articleId, value);
+        if (value !== 0) trackEvent("article_helpful", { helpful: value === 1 });
         setCounts({ up: result.up, down: result.down });
       } else {
         setLocal(previous.vote);
