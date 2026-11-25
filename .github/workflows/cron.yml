@@ -1,0 +1,79 @@
+# Scheduled jobs for Vercel Hobby (D-012, D-111). Hobby runs Vercel Cron at most once a day, so
+# GitHub Actions calls the same /api/cron/* routes with the bearer secret instead.
+#
+# Two runs an hour keep a private repo inside GitHub's free 2,000 Actions minutes a month:
+#   :00  publish-scheduled + twitch-clips (hourly) + weekly-clips (Mondays from 06:00 UTC)
+#   :30  publish-scheduled
+# weekly-clips is safe to repeat: it freezes the previous week once and leaves an existing
+# snapshot alone. GitHub may start scheduled runs some minutes late.
+#
+# Needs the repository secrets PROD_SITE_URL (e.g. https://<project>.vercel.app) and CRON_SECRET
+# (the Production value from Vercel). Without them every run skips. See docs/DEPLOY.md.
+name: Cron
+
+on:
+  schedule:
+    - cron: "0 * * * *"
+    - cron: "30 * * * *"
+  workflow_dispatch:
+    inputs:
+      route:
+        description: Which cron route to run
+        type: choice
+        default: publish-scheduled
+        options:
+          - publish-scheduled
+          - twitch-clips
+          - weekly-clips
+
+permissions: {}
+
+concurrency:
+  group: cron
+  cancel-in-progress: false
+
+jobs:
+  run:
+    name: Call cron routes
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Call routes
+        env:
+          SITE_URL: ${{ secrets.PROD_SITE_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          EVENT: ${{ github.event_name }}
+          SCHEDULE: ${{ github.event.schedule }}
+          ROUTE: ${{ inputs.route }}
+        run: |
+          if [ -z "$SITE_URL" ] || [ -z "$CRON_SECRET" ]; then
+            echo "PROD_SITE_URL or CRON_SECRET is not set; skipping (docs/DEPLOY.md)."
+            exit 0
+          fi
+
+          routes=()
+          if [ "$EVENT" = "workflow_dispatch" ]; then
+            routes=("$ROUTE")
+          else
+            routes=("publish-scheduled")
+            if [ "$SCHEDULE" = "0 * * * *" ]; then
+              routes+=("twitch-clips")
+              if [ "$(date -u +%u)" = "1" ] && [ "$(date -u +%H)" -ge 6 ]; then
+                routes+=("weekly-clips")
+              fi
+            fi
+          fi
+
+          failed=0
+          for route in "${routes[@]}"; do
+            echo "::group::$route"
+            if ! curl -sS --fail-with-body --max-time 300 \
+              -H "Authorization: Bearer $CRON_SECRET" \
+              "${SITE_URL%/}/api/cron/$route"; then
+              echo "::error::$route failed"
+              failed=1
+            fi
+            echo
+            echo "::endgroup::"
+          done
+          exit $failed

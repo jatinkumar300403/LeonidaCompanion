@@ -1,7 +1,7 @@
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join, relative, sep } from "node:path";
 import { describe, expect, it } from "vitest";
-import { ROBOTS_DISALLOW } from "./robots";
+import { ROBOTS_ALLOW, ROBOTS_DISALLOW } from "./robots";
 
 /**
  * SPEC §13 metadata audit (Phase 9): every route has metadata, and the private or thin routes are
@@ -73,5 +73,10 @@ describe("route metadata audit (SPEC §13)", () => {
       expect(ROBOTS_DISALLOW.some((rule) => path.startsWith(rule.replace(/\/$/, "")))).toBe(true);
     }
     expect(ROBOTS_DISALLOW).not.toContain("/api/og");
+  });
+
+  it("robots.txt lets crawlers read link previews and the IndexNow key under /api/ (D-113)", () => {
+    expect(ROBOTS_ALLOW).toEqual(expect.arrayContaining(["/", "/api/og", "/api/indexnow"]));
+    for (const rule of ROBOTS_ALLOW) expect(ROBOTS_DISALLOW).not.toContain(rule);
   });
 });

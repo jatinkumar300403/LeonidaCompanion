@@ -1,6 +1,6 @@
 # PROGRESS — Leonida Atlas
 
-Launch: **Thu 19 Nov 2026** (passed; the site isn't deployed yet). Last updated: 2026-11-25 (Phase 10). Spec: `docs/SPEC.md`. Decisions: `docs/DECISIONS.md` (D-xxx).
+Launch: **Thu 19 Nov 2026** (passed; the site isn't deployed yet). Last updated: 2026-11-25 (Phase 11 prep). Spec: `docs/SPEC.md`. Decisions: `docs/DECISIONS.md` (D-xxx).
 Legend: `[x]` done · `[ ]` to do · ⚡ = cut first if behind. The kit's fallback: ship 0–6 and 9–11 on launch day, then 7–8 on the 20th.
 
 ## Status
@@ -199,14 +199,49 @@ Legend: `[x]` done · `[ ]` to do · ⚡ = cut first if behind. The kit's fallba
     - `pnpm e2e:prod`: 23 passed (new: the bundle-secret scan and the production test-mailbox 404);
     - `pnpm lhci` assertions pass.
   - **DEV is clean** after `pnpm test:cleanup`: no test users, threads, posts, clips, reports, audit rows, votes or feedback, no published articles, and the flags are all off. `sample-tip-1` is back to draft, and the Upstash test keys are deleted.
-- **Next:** Phase 11 (production deploy), then Phases 7–8 (wiki ingestion, Ask AI).
-  - Phase 11 pushes all migrations to PROD, including `20261125090000_qa_hardening.sql` (D-100).
-  - Phase 11 adds the cron schedules (`vercel.json` or `.github/workflows/cron.yml`, D-012) and sets `NEXT_PUBLIC_SITE_HOSTS`.
+- **In progress: Phase 11 (production deploy). The repo side is done; the deploy waits on the owner list below.**
+  - **Owner decisions (25 Nov):**
+    - Vercel **Hobby** (the account is on Hobby);
+    - go live on **`https://<project>.vercel.app`** first, with a domain later (D-114);
+    - a **private** GitHub repo, with crons from GitHub Actions **every 30 min** (D-111).
+  - **Preflight (25 Nov):**
+    - no git remote; no `gh` or Vercel CLI;
+    - the Vercel MCP is signed in, but projects and domains answer 403 until team access is approved;
+    - no PROD Supabase ref;
+    - no domain;
+    - `RESEND_API_KEY`, `ANTHROPIC_API_KEY`, Sentry and `INDEXNOW_KEY` are empty.
+  - **Done in the repo:**
+    - **`docs/DEPLOY.md`:** the exact steps, the env table per environment, crons, the smoke test, Search Console + Bing, IndexNow, switching to a domain, moving to Pro, rollback;
+    - **`.github/workflows/cron.yml`** (D-111): it skips until the `PROD_SITE_URL` and `CRON_SECRET` repository secrets exist;
+    - **`pnpm db:push:prod`** (`scripts/supabase-prod.mjs`, D-112): migrations + seed only, needs `CONFIRM_PROD=<ref>`, and never re-links the CLI;
+    - **`robots.txt`** allows `/api/indexnow`, the IndexNow key location (D-113);
+    - **`pnpm e2e:live`** (`playwright.live.config.ts`, `e2e-live/smoke.spec.ts`): the post-deploy smoke test. It reads only `.env.prod.local`.
+  - **Checks:**
+    - `pnpm typecheck`, `lint`, `format:check` and `build` pass;
+    - `pnpm test`: 936 unit tests (6 new);
+    - `robots.txt` checked on the dev server;
+    - the cron workflow's YAML parses, and its route choice was dry-run for :00, :30 and manual runs;
+    - `pnpm e2e:live --list` loads its 14 tests.
+  - **Left for Phase 11, after the owner list (each outward step needs the owner's OK in chat):**
+    1. push to GitHub;
+    2. `pnpm db:push:prod` (dry run, then real), then confirm the CLI is still on DEV;
+    3. PROD Auth URL config and the token_hash magic-link template;
+    4. Vercel env vars (non-secret ones via MCP), deploy;
+    5. `pnpm e2e:live`, a manual cron run, and Search Console + Bing.
+- **Next after Phase 11:** Phases 7–8 (wiki ingestion, Ask AI).
   - **Open items for Phases 7–8:**
     - the Ask AI prompt-injection abuse case ("ignore your sources…" must stay grounded, rule 8);
     - the live wiki-sync runbook steps (RUNBOOK §6–7);
     - `onThreadCreated()` when a mod approves a held Q&A thread (D-080);
     - `ask_submitted` and `ask_feedback` fired from the real Ask flow.
+- **Owner to-dos for Phase 11** (details and dashboard pages in `docs/DEPLOY.md` §0; never paste keys in chat):
+  1. **Supabase → New project** `leonida-prod`, in the same region as DEV. Put its ref in `.env.local` as `SUPABASE_PROJECT_REF_PROD`.
+  2. **github.com/new:** a private, empty `leonida-atlas` repo. Tell Claude its URL.
+  3. **Upstash:** a second database `leonida-prod`, or reuse DEV's.
+  4. **Cloudflare → Turnstile → Hostname management:** add `<project>.vercel.app`.
+  5. **Approve the Vercel consent link** Claude gives you (MCP team access).
+  6. After the push: **vercel.com/new → import the repo** (install the Vercel GitHub app for that repo only), then paste the secret env vars from DEPLOY §5.
+  7. After the deploy: the GitHub repository secrets `PROD_SITE_URL` and `CRON_SECRET` (DEPLOY §6), and `.env.prod.local` for the smoke test (DEPLOY §7.1).
 - **Owner to-dos from Phase 10:**
   - **Review the `/about` draft**, then remove its Draft badge (`draft={false}` on its `LegalPage`). It describes the site only, not the game.
   - **Read `docs/RUNBOOK.md`** before launch day, especially §3 (reports and removal requests), §8 (key rotation) and §9 (outages).
@@ -242,7 +277,7 @@ Legend: `[x]` done · `[ ]` to do · ⚡ = cut first if behind. The kit's fallba
     - YouTube: `videos.list` returns `items` with `status.embeddable` and `contentDetails.duration`; a Short and a watch link both resolve; a non-embeddable video is refused; thumbnails come from `i.ytimg.com`.
     - TikTok (from outside India): oEmbed returns `embed_product_id`, the thumbnail host is on the allowlist, and `embed.js` turns the blockquote into a player under the CSP.
     - Then replace the fixtures in `src/server/clips/__fixtures__` with real responses and run `pnpm test`.
-  - Add the cron schedules in Phase 11: `/api/cron/twitch-clips` hourly and `/api/cron/weekly-clips` Monday 06:00 UTC.
+  - ~~Add the cron schedules in Phase 11~~: done in `.github/workflows/cron.yml` (D-111); turn it on with the repository secrets (DEPLOY §6).
 - **Owner to-dos from Phase 3:**
   - Add `RESEND_API_KEY` and a real `EMAIL_FROM` on a verified domain. Until then newsletter sign-ups work only on DEV (dev outbox, D-054) and stay disabled in production.
   - Optional: `INDEXNOW_KEY` (any 8–128 letters, digits or dashes), so publishing pings Bing.
@@ -257,7 +292,9 @@ Legend: `[x]` done · `[ ]` to do · ⚡ = cut first if behind. The kit's fallba
 
   Optional: push to a GitHub repo and connect it to Vercel for Preview deploys.
 - **Known issues:**
-  - CI (`.github/workflows/ci.yml`) has not run yet: there is no git remote. In CI, `test:db` and the auth E2E tests skip (no DEV keys).
+  - **Until there's a domain and Resend,** PROD email sign-in reaches only Supabase project team members (the built-in mailer). Members sign in with Google or Discord (D-114).
+  - Scheduled publishing on Hobby runs every 30 min from GitHub Actions, which can start late, so a tip goes live up to about 30–40 min after its time (D-111).
+  - CI (`.github/workflows/ci.yml`) and the cron workflow have not run yet: there is no git remote. In CI, `test:db` and the auth E2E tests skip (no DEV keys).
   - Vercel Production deploys fail until the D-023 keys exist (D-027). Preview deploys work.
   - The magic link from the default email template uses PKCE, so it must be opened in the browser that requested it (see the template to-do above).
   - Screenshots taken with the Playwright MCP during page load log a harmless hydration warning (Playwright injects `caret-color`).
@@ -267,7 +304,7 @@ Legend: `[x]` done · `[ ]` to do · ⚡ = cut first if behind. The kit's fallba
   - The platform fixtures follow the documented responses, not recorded live ones (no keys yet). See the Phase 5 owner to-dos.
   - Clip pages, lists and weekly pages are cached (D-073), so rows changed directly in the database show up after the cache expires, as with articles and the forum.
   - ESLint 9 shows npm's deprecation warning. It stays until the plugins support ESLint 10 (D-034).
-  - The Supabase and Vercel MCP servers still need the owner's sign-in. Context7 and Playwright work. Phases 2–3 used the Supabase CLI and the Management API instead.
+  - The Supabase MCP still needs the owner's sign-in; the Vercel MCP is signed in but needs team access approved (403 on projects). Context7 and Playwright work. Phases 2–3 used the Supabase CLI and the Management API instead.
   - Rows changed directly in the database skip the cache tags, so public pages show them within 10 minutes (D-051). `pnpm test:cleanup` deletes test articles the same way.
   - `pnpm seed:dev` prints Node's "module type" warning (the repo has no `"type": "module"`). It is harmless.
   - `next dev` regenerates a managed `AGENTS.md`; it is gitignored (D-060).
@@ -301,7 +338,7 @@ Legend: `[x]` done · `[ ]` to do · ⚡ = cut first if behind. The kit's fallba
 - [x] Supabase DEV keys + access token (with database write). [ ] DEV auth URLs, Google + Discord OAuth. [ ] PROD project → **Phase 11**
 - [x] Upstash Redis. [x] Turnstile keys. [ ] Resend key + verified domain + Supabase SMTP → before launch (newsletter is DEV-only until then)
 - [ ] Twitch app + YouTube key (code is ready; empty keys degrade safely, see Phase 5 to-dos). Anthropic key + spend limit → **before launch** (Phase 6 code is ready; see its owner to-dos). Voyage key + limit → **Phase 7**
-- [ ] Domain (no "GTA", "Rockstar" or "Vice City") → **Phase 11**. Sentry DSN + token → **Phase 11** (code ready since Phase 9). Vercel → **Phase 11**
+- [ ] Domain (no "GTA", "Rockstar" or "Vice City") → after launch on vercel.app (D-114, DEPLOY §9). Sentry DSN + token → **Phase 11** (code ready since Phase 9). Vercel → **Phase 11**
 - [x] `.env.local`: `SEED_ADMIN_EMAIL` set. [ ] Check `ADMIN_EMAIL` and `WIKI_CONTACT_EMAIL`
 
 ## Build plan (phase · SPEC sections · deliverables)
@@ -365,9 +402,10 @@ Legend: `[x]` done · `[ ]` to do · ⚡ = cut first if behind. The kit's fallba
 - [x] Abuse cases (Ask AI injection waits for Phase 8); empty states; visual QA at 390/1440 in dark and light; `docs/RUNBOOK.md`; go/no-go list
 
 ### 11 · Production deploy · §12 · Prompt 11
-- [ ] `docs/DEPLOY.md`; PROD Supabase gets migrations + seed only, plus auth config; re-link the CLI to DEV afterwards
-- [ ] Vercel env (Preview → DEV), domain + www, crons (Pro) or GitHub Actions; `NEXT_PUBLIC_SITE_HOSTS`
-- [ ] Prod smoke test, Sentry test error, Search Console + Bing, IndexNow key
+- [x] `docs/DEPLOY.md`; `pnpm db:push:prod` (migrations + seed only, the CLI stays on DEV, D-112)
+- [x] GitHub Actions cron fallback for Hobby (D-111); IndexNow key location allowed in robots (D-113); `pnpm e2e:live`
+- [ ] Push; PROD schema + auth config; Vercel project + env (Preview → DEV), `NEXT_PUBLIC_SITE_HOSTS` = the vercel.app host (D-114)
+- [ ] Prod smoke test, Sentry test error (once there's a DSN), Search Console + Bing
 
 ### 12 · Search, email notifications, digest (post-launch) · §1 (/search), §9 · Prompt 12
 - [ ] /search (FTS + trigram, tabs, highlights, ⌘K); notify-email cron; weekly digest + admin preview
@@ -400,6 +438,6 @@ Legend: `[x]` done · `[ ]` to do · ⚡ = cut first if behind. The kit's fallba
 ## Open questions for the owner
 - **Q1.** Anonymous Ask AI at launch? The seed has `FEATURE_ASK_ANON` off, so logged-out visitors can't use the home AskBox. Proposal: turn it on, with Turnstile + 5/day + a spend cap (Haiku costs about $0.001 per answer).
 - **Q2.** Exact unlock time: regional midnight, or one global time? It drives the countdown.
-- **Q3.** Vercel Hobby (non-commercial) or Pro (needed before ads or affiliate links, and allows frequent crons)?
-- **Q4.** Domain name (sets `NEXT_PUBLIC_SITE_URL`, the site hosts and `EMAIL_FROM`).
+- ~~**Q3.**~~ Hobby for now; crons via GitHub Actions every 30 min (D-111). Pro before ads or affiliate links (DEPLOY §10).
+- **Q4.** Domain name: launching on `<project>.vercel.app` first (D-114). Public email sign-in needs a domain + Resend (DEPLOY §9).
 - **Q5.** After reading Fandom's ToS: a scheduled wiki sync, or manual runs only?

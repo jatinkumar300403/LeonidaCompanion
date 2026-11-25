@@ -21,7 +21,7 @@ For whoever runs the site day to day. Written in Phase 10 (25 Nov 2026), before 
    - it pings IndexNow (only if `INDEXNOW_KEY` is set).
 4. Open the tip from `/tips` and check how it reads.
 
-- **Scheduling:** in the full editor (`/admin/articles/<id>`), pick **Schedule**. The `publish-scheduled` cron publishes it within 10 minutes of the chosen time (D-052).
+- **Scheduling:** in the full editor (`/admin/articles/<id>`), pick **Schedule**. The `publish-scheduled` cron publishes it within about 30–40 minutes of the chosen time on Hobby (D-052, D-111).
 - **Unpublish:** in the editor, **Unpublish** makes it a draft again and removes it from public lists at once.
 - **Content written by Claude:** it's always saved as `status='draft'` with sources (CLAUDE.md). Review it before you publish.
 
@@ -74,13 +74,13 @@ Saving refreshes the cached flags at once, and static pages pick the change up w
 
 ## 5. Crons
 
-Phase 11 sets them up in `vercel.json` (Vercel Pro), or in `.github/workflows/cron.yml` on Hobby (Q3). Each route needs `Authorization: Bearer $CRON_SECRET`, and anything else gets a 401. Vercel Cron sends GET, and a manual run can use GET or POST.
+On Vercel Hobby they run from GitHub Actions (`.github/workflows/cron.yml`, D-111): every hour at :00 and :30, and GitHub may start runs a few minutes late. On Pro they move to `vercel.json` (DEPLOY §10). Run one by hand from GitHub → Actions → Cron → Run workflow. Each route needs `Authorization: Bearer $CRON_SECRET`, and anything else gets a 401. Vercel Cron sends GET, and a manual run can use GET or POST.
 
 | Route | Schedule | Without its keys |
 | --- | --- | --- |
-| `/api/cron/publish-scheduled` | every 10 min | 503 without `SUPABASE_SECRET_KEY` |
+| `/api/cron/publish-scheduled` | every 30 min (Hobby; 10 min on Pro) | 503 without `SUPABASE_SECRET_KEY` |
 | `/api/cron/twitch-clips` | hourly | `{ "skipped": "Twitch keys missing" }` |
-| `/api/cron/weekly-clips` | Mon 06:00 UTC | `{ skipped }` without the service key. `?week=2026-w47` backfills a finished week; an open week is refused. |
+| `/api/cron/weekly-clips` | Mon, hourly from 06:00 UTC (repeats do nothing) | `{ skipped }` without the service key. `?week=2026-w47` backfills a finished week; an open week is refused. |
 | `/api/cron/wiki-sync` | every 6 h | **after Phase 7** |
 | `/api/cron/digest`, `/api/cron/notify-email` | Mon 08:00 UTC, hourly | **post-launch (Phase 12)** |
 
@@ -147,7 +147,7 @@ General order: create the new key, put it in Vercel (Production, plus Preview wh
   - Full `pnpm e2e` runs use about 28 of DEV's 30 magic-link verifications per 5 minutes, so space full runs 5 minutes apart and use `--workers=4` (D-089).
   - `pnpm e2e:prod` needs `pnpm build` first and a free port 3000.
   - On this Windows machine, `pnpm lhci` needs a Chromium started with `--remote-debugging-port=9222` and `LHCI_CHROME_PORT=9222` (D-099).
-- **Migrations:** `pnpm db:push` goes to DEV only, through the `@dev` guard. The CLI calls every project's main branch "production", even DEV; check the project ref, not that label (D-108). PROD gets migrations only through Phase 11's documented steps.
+- **Migrations:** `pnpm db:push` goes to DEV only, through the `@dev` guard. The CLI calls every project's main branch "production", even DEV; check the project ref, not that label (D-108). PROD gets migrations only through `pnpm db:push:prod` with `CONFIRM_PROD` set (DEPLOY §2, D-112).
 - **Security regression suites:**
   - `supabase/tests/attacks.test.ts` (RLS and write-guard attacks);
   - `src/components/shared/markdown-renderer.test.tsx` (the XSS payload list);

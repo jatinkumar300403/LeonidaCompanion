@@ -25,7 +25,9 @@
     "db:seed": "node scripts/supabase.mjs db push --remote=@dev --include-seed --yes && node scripts/seed-admin.mjs",
     "db:types": "node scripts/supabase.mjs gen types typescript --remote=@dev --schema public --out src/types/database.ts",
     "ingest:wiki": "node scripts/ingest-wiki.ts",
-    "seed:dev": "node scripts/seed-dev.ts"
+    "seed:dev": "node scripts/seed-dev.ts",
+    "db:push:prod": "node scripts/supabase-prod.mjs",
+    "e2e:live": "playwright test -c playwright.live.config.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^1.9.0",

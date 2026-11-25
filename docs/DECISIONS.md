@@ -633,3 +633,32 @@ Context7 wasn't connected in this session (D-001), so look an API up in Context7
   - The `/admin/ui` spoiler smoke test gets 90 s, because the large showcase can take about 30 s to compile and hydrate on `next dev` under load.
   - The moderation flow's ban and remove toasts wait 20 s.
   - Both only failed under full-suite load. Neither changes what's asserted.
+
+### Phase 11 (2026-11-25)
+
+- **D-111 · 2026-11-25 · Hobby crons through GitHub Actions, every 30 minutes (answers Q3).**
+  - The owner chose Vercel Hobby. Hobby runs Vercel Cron at most once a day, so the SPEC §12 schedules can't live in `vercel.json`.
+  - `.github/workflows/cron.yml` calls the same routes with `Authorization: Bearer $CRON_SECRET` (D-012):
+    - at :00, `publish-scheduled` and `twitch-clips`, plus `weekly-clips` on Mondays from 06:00 UTC;
+    - at :30, `publish-scheduled` only.
+  - **Why 30 minutes, not SPEC's 10:** the repo is private (owner's choice), and the free plan has 2,000 Actions minutes a month. Every 10 minutes plus hourly is about 5,000 runs. Two runs an hour is about 1,450. Scheduled tips go live up to about 30–40 minutes late (GitHub can also start runs late).
+  - `weekly-clips` is safe to repeat (an existing snapshot stays), so it runs on every Monday hourly run from 06:00. A late or failed run heals itself.
+  - Every run skips cleanly while the `PROD_SITE_URL` or `CRON_SECRET` repository secrets are unset.
+  - **Later:** Pro → `vercel.json` with the SPEC schedules (DEPLOY §10). Vercel's newer queue-based Schedules allow every 15 minutes on Hobby, but would need the routes rewritten as queue consumers, so not now.
+- **D-112 · 2026-11-25 · The PROD database path.**
+  - `pnpm db:push:prod` (`scripts/supabase-prod.mjs`) is the only command that accepts the PROD ref. The DEV guard (D-040) still refuses it.
+  - It needs `SUPABASE_PROJECT_REF_PROD` **and** `CONFIRM_PROD=<that ref>` in the shell for the run, refuses when PROD equals DEV, and checks that the CLI is linked to DEV before and after.
+  - It runs `supabase db push --remote=<prod-ref> --include-seed --yes`: migrations plus `seed.sql`, which holds no sample content. `--remote=<ref>` never changes the link.
+  - The seed admin (D-041) is stored through the Management API (`select public.set_seed_admin(…)` with `SUPABASE_ACCESS_TOKEN`), so the PROD secret key never has to be on this machine.
+  - The guard is a pure function (`scripts/lib/prod-env.mjs`) with unit tests in `src/lib/env/prod-guard.test.ts`.
+- **D-113 · 2026-11-25 · IndexNow key location.**
+  - The key stays served by `/api/indexnow` (Phase 3) instead of a file in `/public`, so it's never in git, and rotating it is an env change.
+  - `robots.txt` disallows `/api/`, so `/api/indexnow` is now in the allow list next to `/api/og` (`ROBOTS_ALLOW` in `src/lib/seo/robots.ts`). Bing reads the key location to verify the host.
+- **D-114 · 2026-11-25 · Launch on `<project>.vercel.app` first (answers Q4 for now).**
+  - The owner hasn't bought a domain. Production goes live on the Vercel address; DEPLOY §9 is the switch-over.
+  - **Consequences until there's a domain:**
+    - no Resend: Supabase's built-in mailer only sends magic links to project team members, so public sign-in relies on Google and Discord;
+    - Search Console uses a URL-prefix property;
+    - `NEXT_PUBLIC_SITE_HOSTS` is the vercel.app host (Twitch `parent`). The deployment's own `VERCEL_URL` is trusted automatically.
+  - **Preview deploys** use DEV Supabase and Cloudflare's public always-pass Turnstile test keys, because their hostnames change on every deploy.
+  - **Post-deploy smoke test:** `pnpm e2e:live` (`playwright.live.config.ts`, `e2e-live/`). It reads only `.env.prod.local`, never `.env.local`. Its forum round-trip uses a throwaway PROD member and deletes everything it created.
