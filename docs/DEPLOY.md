@@ -14,8 +14,13 @@ Decisions: D-111 to D-114. Day-to-day operations: `docs/RUNBOOK.md`.
 - PROD Supabase gets **migrations + `seed.sql` only**, through `pnpm db:push:prod` (D-112). Never `pnpm seed:dev`, never sample content, never the DEV scripts.
 - Claude asks in chat before each outward step: the push, the PROD database push, and Vercel project or env changes.
 
+**Live since 25 Nov 2026:**
+- **https://leonida-atlas-rose.vercel.app**: the Vercel project is `leonida-atlas`, but the plain `leonida-atlas.vercel.app` was taken, so Vercel added `-rose`;
+- PROD Supabase ref `snesaembycvyxpvklxok` (Tokyo);
+- GitHub `jatinkumar300403/LeonidaCompanion`.
+
 In this page:
-- `<project>` is the Vercel project name. We use `leonida-atlas`; if that name is taken, Vercel shows the URL it gave you instead.
+- `<project>.vercel.app` means `leonida-atlas-rose.vercel.app`.
 - `<scope>` is the Vercel account slug in preview URLs (`jatins-projects-ca7f6865` for this account).
 
 ---
@@ -66,7 +71,7 @@ The first push opens Git Credential Manager in your browser. Sign in to GitHub t
 - **Authentication → URL Configuration:**
   - **Site URL:** `https://<project>.vercel.app`.
   - **Redirect URLs:** `https://<project>.vercel.app/**`. Add your domain and `www` later (§9). Preview deploys use DEV, so their wildcard goes on DEV (below), not here.
-- **Authentication → Emails → Magic link:** make the link
+- **Authentication → Emails → Magic link** (only possible once custom SMTP is set, §9: Supabase refuses template edits on free projects that use the default mailer): make the link
   `{{ .SiteURL }}/auth/callback?token_hash={{ .TokenHash }}&type=email`
   so it works even when opened in another browser (PKCE links don't).
 
@@ -92,6 +97,8 @@ The first push opens Git Credential Manager in your browser. Sign in to GitHub t
 4. **Deployments → the latest → Redeploy.**
 
 ## 5. Environment variables
+
+**Adding a variable:** use **Add Environment Variable**. Never edit an existing row to add a value for another environment: that moves the row, as happened once during the first deploy (the Supabase URL row and the Turnstile test row). `NEXT_PUBLIC_*` values must be type **Config**, because they're public by design. Everything secret is type **Secret**.
 
 **Who sets what:**
 - *You* paste secrets (Settings → Environment Variables → Add, choose the environment, mark "Sensitive").

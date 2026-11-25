@@ -661,4 +661,5 @@ Context7 wasn't connected in this session (D-001), so look an API up in Context7
     - Search Console uses a URL-prefix property;
     - `NEXT_PUBLIC_SITE_HOSTS` is the vercel.app host (Twitch `parent`). The deployment's own `VERCEL_URL` is trusted automatically.
   - **Preview deploys** use DEV Supabase and Cloudflare's public always-pass Turnstile test keys, because their hostnames change on every deploy.
+  - **Deployed 25 Nov 2026:** `https://leonida-atlas-rose.vercel.app` (`leonida-atlas.vercel.app` was taken). PROD Supabase's magic-link template can't be changed on a free project without custom SMTP, so the token_hash template waits for Resend too.
   - **Post-deploy smoke test:** `pnpm e2e:live` (`playwright.live.config.ts`, `e2e-live/`). It reads only `.env.prod.local`, never `.env.local`. Its forum round-trip uses a throwaway PROD member and deletes everything it created.
