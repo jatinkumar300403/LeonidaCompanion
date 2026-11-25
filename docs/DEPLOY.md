@@ -24,9 +24,9 @@ In this page:
 
 | # | Where | What to do |
 | --- | --- | --- |
-| 1 | **supabase.com/dashboard → New project** | Name `leonida-prod`, the **same region as `leonida-dev`**, and a strong database password (keep it in your password manager; nothing here needs it). Then copy the project **ref** (Project Settings → General) into `.env.local` as `SUPABASE_PROJECT_REF_PROD=`. A ref isn't a secret. |
+| 1 | **supabase.com/dashboard → New project** | Name `leonida-prod`, the **same region as DEV: Northeast Asia (Tokyo), `ap-northeast-1`**, and a strong database password (keep it in your password manager; nothing here needs it). Then copy the project **ref** (Project Settings → General) into `.env.local` as `SUPABASE_PROJECT_REF_PROD=`. A ref isn't a secret. |
 | 2 | **github.com/new** | Create a **Private** repository `leonida-atlas`, with **no** README, .gitignore or licence (it must be empty). Tell Claude the HTTPS URL. |
-| 3 | **console.upstash.com → Create database** | `leonida-prod`, in the same region as Vercel functions (Washington, D.C. / `iad1` by default). This keeps rate-limit counters apart from DEV. If the free plan doesn't allow a second database, reuse DEV's (it works, but DEV tests then share counters with production). |
+| 3 | **console.upstash.com → Create database** | `leonida-prod`, in **Tokyo (`ap-northeast-1`)**, next to Supabase and the Vercel functions (§4.2). This keeps rate-limit counters apart from DEV. If the free plan doesn't allow a second database, reuse DEV's (it works, but DEV tests then share counters with production). |
 | 4 | **dash.cloudflare.com → Turnstile → your widget → Hostname management** | Add `<project>.vercel.app` (and later your domain). |
 | 5 | **Claude's Vercel MCP** | Claude gives you a one-time Vercel consent link (`authorize_team_access`). Open it and approve. Until you do, the MCP can read your account but not projects or domains. |
 
@@ -87,7 +87,7 @@ The first push opens Git Credential Manager in your browser. Sign in to GitHub t
    - import it with project name `leonida-atlas` and framework **Next.js**;
    - leave the build and install commands on their defaults;
    - press **Deploy**. This first production build **fails** on purpose: production refuses to boot without its keys (D-027). The env vars in §5 fix it.
-2. **Settings → Build and Deployment → Node.js Version:** `24.x`.
+2. **Settings → Build and Deployment → Node.js Version:** `24.x`. **Settings → Functions → Function Region:** Tokyo, Japan (`hnd1`), next to Supabase (Vercel's default is Washington, D.C., which would add a Pacific round-trip to every database call).
 3. **Settings → Environment Variables:** see §5.
 4. **Deployments → the latest → Redeploy.**
 
