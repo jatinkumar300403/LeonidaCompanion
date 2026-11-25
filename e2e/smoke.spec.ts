@@ -56,6 +56,8 @@ test("the theme follows the system preference", async ({ page }) => {
 
 test("spoilers stay hidden until revealed by keyboard", async ({ page }) => {
   // /admin/ui is staff-only since Phase 2 (requireRole("mod")).
+  // The large showcase can take ~30 s to compile and hydrate under 4 workers on next dev (Phase 10).
+  test.setTimeout(90_000);
   test.skip(!supabaseReady, "Needs the Supabase DEV keys to sign in as a moderator.");
   const moderator = await createAccount("mod", "mod");
   await signInWithMagicLink(page, moderator.email, "/admin/ui");
@@ -100,4 +102,15 @@ test("desktop: header nav marks the current section", async ({ page, isMobile })
   const header = page.getByRole("navigation", { name: "Main" });
   await expect(header.getByRole("link", { name: "Tips" })).toHaveAttribute("aria-current", "page");
   await expect(page.getByRole("navigation", { name: "Primary" })).toBeHidden();
+});
+
+/** Phase 10 (D-109): a 404 from inside a route group used to draw the header and footer twice. */
+test("404 pages draw the site shell once, nested or not", async ({ page }) => {
+  for (const path of ["/tips/does-not-exist", "/u/nobody_here_x", "/forum/t/999999999/missing", "/no-such-page"]) {
+    const response = await page.goto(path);
+    expect(response?.status(), path).toBe(404);
+    await expect(page.getByRole("heading", { level: 1, name: "This page isn't on the map" }), path).toBeVisible();
+    await expect(page.locator("header"), path).toHaveCount(1);
+    await expect(page.locator("footer"), path).toHaveCount(1);
+  }
 });

@@ -40,3 +40,14 @@ describe("JSON-LD", () => {
     expect(JSON.parse(out)).toEqual({ name: "</script><script>alert(1)</script>" });
   });
 });
+
+describe("serializeJsonLd with hostile thread titles (Phase 10)", () => {
+  it("can't close the script tag or open a comment", async () => {
+    const { serializeJsonLd: serialize } = await import("./jsonld");
+    const title = "</script><script>alert(1)</script><!-- <SCRIPT> \u2028\u2029";
+    const text = serialize({ "@type": "QAPage", mainEntity: { name: title } });
+    expect(text).not.toMatch(/<\/?script|<!--/i);
+    expect(text).not.toContain("<");
+    expect(JSON.parse(text).mainEntity.name).toBe(title);
+  });
+});

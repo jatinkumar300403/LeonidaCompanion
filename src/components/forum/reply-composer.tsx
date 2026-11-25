@@ -111,9 +111,16 @@ function ReplyForm({ threadId, canLink }: { threadId: number; canLink: boolean }
     event.preventDefault();
     const formData = new FormData(event.currentTarget);
     start(async () => {
-      const result: ReplyState = await createPost({ status: "idle" }, formData);
+      let result: ReplyState;
+      try {
+        result = await createPost({ status: "idle" }, formData);
+      } catch {
+        // The request itself failed: offline, or a body past the 1 MB Server Action limit.
+        setError("That reply didn't go through. If it's very long, shorten it and try again.");
+        return;
+      }
       if (result.status === "error") {
-        setError(result.message);
+        setError(result.fieldErrors?.body ?? result.message);
         return;
       }
       if (result.status !== "posted") return;
@@ -180,7 +187,8 @@ function ReplyForm({ threadId, canLink }: { threadId: number; canLink: boolean }
         </p>
       ) : null}
       <FieldError id={`${id}-error`} message={error} />
-      {engaged ? <TurnstileField key={turnstileKey} action="forum-reply" /> : null}
+      {/* Reserved from the start, so mounting the widget on first focus never moves the button (D-106). */}
+      <div className="min-h-[65px]">{engaged ? <TurnstileField key={turnstileKey} action="forum-reply" /> : null}</div>
       <Button type="submit" disabled={pending || body.trim().length < 2}>
         {pending ? "Posting…" : "Post reply"}
       </Button>

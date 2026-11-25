@@ -2,6 +2,7 @@ import { z } from "zod";
 import { REPORT_REASONS, REPORT_TARGETS } from "@/config/forum";
 import { TAGS } from "@/config/tags";
 import { POST_LIMITS, THREAD_LIMITS } from "@/lib/forum/rules";
+import { cleanLineString, cleanString } from "./text";
 
 /**
  * Forum input validation (SPEC §5). Mirrors the database checks so forms show a clear message
@@ -11,20 +12,17 @@ import { POST_LIMITS, THREAD_LIMITS } from "@/lib/forum/rules";
 const tagSlugs = TAGS.map((tag) => tag.slug) as [string, ...string[]];
 const id = z.coerce.number().int().positive().max(Number.MAX_SAFE_INTEGER);
 
-const title = z
-  .string()
+const title = cleanLineString()
   .trim()
   .min(THREAD_LIMITS.titleMin, `Titles need at least ${THREAD_LIMITS.titleMin} characters.`)
   .max(THREAD_LIMITS.titleMax, `Titles can be at most ${THREAD_LIMITS.titleMax} characters.`);
 
-const threadBody = z
-  .string()
+const threadBody = cleanString()
   .trim()
   .min(THREAD_LIMITS.bodyMin, `Add a few more details (at least ${THREAD_LIMITS.bodyMin} characters).`)
   .max(THREAD_LIMITS.bodyMax, `Keep it under ${THREAD_LIMITS.bodyMax.toLocaleString("en")} characters.`);
 
-const postBody = z
-  .string()
+const postBody = cleanString()
   .trim()
   .min(POST_LIMITS.bodyMin, "Write a reply first.")
   .max(POST_LIMITS.bodyMax, `Keep it under ${POST_LIMITS.bodyMax.toLocaleString("en")} characters.`);
@@ -73,7 +71,7 @@ export const reportSchema = z.object({
   targetType: z.enum(REPORT_TARGETS),
   targetId: z.string().trim().min(1).max(200),
   reason: z.enum(REPORT_REASONS.map((reason) => reason.value) as [string, ...string[]], "Pick a reason."),
-  details: z.string().trim().max(2000, "Keep the details under 2,000 characters.").default(""),
+  details: cleanString().trim().max(2000, "Keep the details under 2,000 characters.").default(""),
 });
 export type ReportInput = z.infer<typeof reportSchema>;
 

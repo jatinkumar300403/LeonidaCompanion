@@ -42,9 +42,18 @@ test("a question gets a reply, the asker accepts it and the thread shows Solved"
   const helperPage = await helperContext.newPage();
   await signInWithMagicLink(helperPage, helper.email, threadPath);
   await expect(helperPage.getByRole("heading", { level: 1 })).toHaveText(title);
-  await helperPage
-    .getByRole("textbox", { name: "Your reply" })
-    .fill("Settings → Controls → Camera: raise the look sensitivity.");
+  // Phase 10 abuse cases: oversized replies are refused with a message and nothing is stored.
+  const replyBox = helperPage.getByRole("textbox", { name: "Your reply" });
+  await replyBox.fill("x".repeat(20_001));
+  await helperPage.getByRole("button", { name: "Post reply" }).click();
+  await expect(helperPage.getByText("Keep it under 20,000 characters.")).toBeVisible({ timeout: 30_000 });
+  await replyBox.fill("y".repeat(1_100_000)); // past Next's 1 MB Server Action body limit
+  await helperPage.getByRole("button", { name: "Post reply" }).click();
+  await expect(helperPage.getByText("That reply didn't go through.", { exact: false })).toBeVisible({
+    timeout: 30_000,
+  });
+  await expect(helperPage.getByRole("heading", { level: 1 })).toHaveText(title);
+  await replyBox.fill("Settings → Controls → Camera: raise the look sensitivity.");
   await helperPage.getByRole("button", { name: "Post reply" }).click();
   const helperReply = helperPage.getByRole("article", { name: `Reply by @${helper.username}` });
   await expect(helperReply).toContainText("raise the look sensitivity", { timeout: 30_000 });

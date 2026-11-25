@@ -88,11 +88,14 @@ export async function updateNotificationPrefs(_prev: SettingsState, formData: Fo
   const limit = await rateLimit("profileUpdate", session.userId);
   if (!limit.success) return { status: "error", message: rateLimitMessage(limit.retryAfterSeconds) };
 
-  const parsed = notificationPrefsSchema.parse({ notifyEmailReplies: formData.get("notifyEmailReplies") ?? undefined });
+  const parsed = notificationPrefsSchema.safeParse({
+    notifyEmailReplies: formData.get("notifyEmailReplies") ?? undefined,
+  });
+  if (!parsed.success) return { status: "error", message: "We couldn't save that. Please try again." };
   const supabase = await createSupabaseServerClient();
   const { error } = await supabase
     .from("profiles")
-    .update({ notify_email_replies: parsed.notifyEmailReplies })
+    .update({ notify_email_replies: parsed.data.notifyEmailReplies })
     .eq("id", session.userId);
   if (error) return { status: "error", message: "We couldn't save that. Please try again." };
 
@@ -147,6 +150,8 @@ export async function uploadAvatar(_prev: SettingsState, formData: FormData): Pr
 
 export async function removeAvatar(): Promise<SettingsState> {
   const session = await requireUser("/settings");
+  const limit = await rateLimit("avatarUpload", session.userId);
+  if (!limit.success) return { status: "error", message: rateLimitMessage(limit.retryAfterSeconds) };
   const supabase = await createSupabaseServerClient();
   const { error } = await supabase.from("profiles").update({ avatar_url: null }).eq("id", session.userId);
   if (error) return { status: "error", message: "We couldn't remove the photo. Please try again." };
@@ -165,10 +170,12 @@ export async function deleteAccount(_prev: SettingsState, formData: FormData): P
   const limit = await rateLimit("deleteAccount", session.userId);
   if (!limit.success) return { status: "error", message: rateLimitMessage(limit.retryAfterSeconds) };
 
-  const parsed = deleteAccountSchema.parse({
+  const result = deleteAccountSchema.safeParse({
     confirmUsername: formData.get("confirmUsername") ?? "",
     removePosts: formData.get("removePosts") ?? undefined,
   });
+  if (!result.success) return { status: "error", message: "Type your username exactly to confirm." };
+  const parsed = result.data;
   if (parsed.confirmUsername !== session.profile.username) {
     return {
       status: "error",

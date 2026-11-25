@@ -10,10 +10,13 @@ import { rateLimit, rateLimitMessage, type RateLimitResult } from "@/lib/ratelim
 import type { RateLimitScope } from "@/lib/ratelimit/keys";
 import {
   articleFieldErrors,
+  articleIdSchema,
   articleInputSchema,
   isOwnCoverUrl,
   publishProblems,
   quickTipSchema,
+  saveIntentSchema,
+  statusActionSchema,
   type ArticleInput,
 } from "@/lib/validation/article";
 import { getAdminArticle, takenSlugs } from "@/server/articles/admin-queries";
@@ -143,6 +146,9 @@ export async function quickPublishTip(
  * review (D-057); a live article changes only through an explicit Update.
  */
 export async function saveArticle(id: string | null, raw: unknown, intent: SaveIntent): Promise<ArticleActionResult> {
+  if (!saveIntentSchema.safeParse(intent).success || (id !== null && !articleIdSchema.safeParse(id).success)) {
+    return { ok: false, message: "That didn't work. Reload the editor and try again." };
+  }
   const gate = await guard(intent === "autosave" ? "articleAutosave" : "articleWrite");
   if ("error" in gate) return { ok: false, message: gate.error };
 
@@ -270,6 +276,9 @@ export async function setArticleStatus(
   id: string,
   action: "unpublish" | "archive" | "restore",
 ): Promise<ArticleActionResult> {
+  if (!articleIdSchema.safeParse(id).success || !statusActionSchema.safeParse(action).success) {
+    return { ok: false, message: "That article no longer exists." };
+  }
   const gate = await guard("articleWrite");
   if ("error" in gate) return { ok: false, message: gate.error };
   const existing = await getAdminArticle(id);
@@ -298,6 +307,7 @@ export async function setArticleStatus(
 }
 
 export async function deleteArticle(id: string): Promise<{ ok: boolean; message: string }> {
+  if (!articleIdSchema.safeParse(id).success) return { ok: false, message: "That article no longer exists." };
   const gate = await guard("articleWrite");
   if ("error" in gate) return { ok: false, message: gate.error };
   const existing = await getAdminArticle(id);

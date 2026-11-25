@@ -206,7 +206,8 @@ export function NewThreadForm({
         </div>
       </div>
 
-      {engaged ? <TurnstileField action="forum-thread" /> : null}
+      {/* Reserved from the start, so mounting the widget on first focus never moves the button (D-106). */}
+      <div className="min-h-[65px]">{engaged ? <TurnstileField action="forum-thread" /> : null}</div>
 
       {formError ? (
         <p role="alert" className="text-sm text-destructive">

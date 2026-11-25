@@ -565,3 +565,71 @@ Context7 wasn't connected in this session (D-001), so look an API up in Context7
     - On `/`, Lighthouse took the hero's film-grain noise (a full-hero image layer) as the LCP element and simulated 4.5 s, even though Chrome's own LCP API reports the hero text at first paint. The grain is now a `mask-image` over grey and shows from the `lg` breakpoint up only, where it's actually visible.
     - On article pages, the "Updated" date swapped from the server's full date to "2h ago" after hydration, which re-wrapped the meta row on phones (CLS 0.2). The slot now reserves the width of the longer form.
   - **Windows note:** Lighthouse's chrome-launcher can't spawn Chromium from this machine's sandboxed shells (`spawn UNKNOWN`). `lighthouserc.cjs` accepts `LHCI_CHROME_PORT`, so it reuses a Chromium started with `--remote-debugging-port` (for example by Playwright). Linux CI doesn't need this.
+
+### Phase 10 (2026-11-25)
+
+- **D-100 · 2026-11-25 · Votes and helpful feedback can't change target (security fix).**
+  - **Found by** `supabase/tests/attacks.test.ts`:
+    - a member could `UPDATE` their own vote row's `target_id` (or `target_type`/`user_id`);
+    - `votes_apply` only adds the value delta to the row's current target, so the move changed no score;
+    - voting on the old target again then counted twice.
+    - Repeated, that farmed any post's score and its author's reputation, and reputation ≥ 20 unlocks links and skips the new-account moderation hold.
+    - `article_feedback` had the same gap: a vote could be moved onto a draft.
+  - **Fix:** migration `20261125090000_qa_hardening.sql`.
+    - `votes_validate` refuses an UPDATE that changes `user_id`, `target_type` or `target_id` (`vote_target_immutable`).
+    - A new `article_feedback_guard` refuses changes to `article_id` or `voter_key`.
+  - **Why triggers, not column grants:** PostgREST upserts (the app's vote path) write every column in `ON CONFLICT DO UPDATE`, so revoking UPDATE on the conflict columns would break them. Their values never change in an upsert, so the triggers let it through.
+  - Applied to DEV with `pnpm db:push`; PROD gets it in Phase 11 with the other migrations.
+- **D-101 · 2026-11-25 · Invisible and bidi characters are stripped from member text.**
+  - **What's removed:** bidi overrides and isolates (U+202A–E, U+2066–9), zero-width space, word joiner, BOM, soft hyphen, C0/C1 controls, interlinear annotation and tag characters.
+  - **Where** (`src/lib/validation/text.ts`, applied in zod with `.overwrite()` before trim/min/max):
+    - display names, thread titles and clip captions use `cleanLine`, which also folds line breaks;
+    - bios, thread bodies, replies, report details and the removal form use `cleanText`.
+  - **Kept on purpose:** ZWJ/ZWNJ (emoji, Indic and Persian scripts) and LRM/RLM.
+  - **Effects:**
+    - a title of only invisible characters now fails the minimum length;
+    - a name can't use U+202E (RIGHT-TO-LEFT OVERRIDE) to make "gnp.exe" display as "exe.png";
+    - display names render in `<bdi>` on profiles and in the account menu, so an RTL name doesn't reorder the text around it.
+  - **Usernames** were already ASCII `[a-z0-9_]`; new tests pin the look-alike cases (Cyrillic, fullwidth, combining marks, emoji, RTL).
+  - **Not changed:** rows already stored. DEV has none; PROD starts empty.
+- **D-102 · 2026-11-25 · Server action arguments are validated like form input.**
+  - `updateNotificationPrefs` and `deleteAccount` used zod `.parse()`, so a crafted value threw (a 500) instead of returning a message. They now use `safeParse`.
+  - `removeAvatar` is rate-limited (shares `avatarUpload`).
+  - The CMS actions check their plain arguments: `saveArticle` (id, intent), `setArticleStatus` (id, action) and `deleteArticle` (id), with `articleIdSchema`, `saveIntentSchema` and `statusActionSchema`.
+  - The reply composer shows the field error ("Keep it under 20,000 characters.") instead of a generic one, and catches a failed request (offline, or a body past Next's 1 MB Server Action limit) instead of letting it reach the error boundary.
+- **D-103 · 2026-11-25 · Open redirect through dot segments (security fix).**
+  - **The hole:** `safeNextPath("/.//evil.example")` returned `//evil.example`. URL parsing normalises `/./` and `/x/../` after the "no leading //" check, so `/auth/callback?next=/.//evil.example` (and the sign-in and onboarding redirects) could send a freshly signed-in user to another host.
+  - **Fix:** the normalised pathname is checked again for `//` and `\`.
+  - **Tests:**
+    - unit cases for `/./`, `/x/../`, `%2e%2e`, climbing above the root and `https:host`;
+    - the sign-in E2E now uses `/.//evil.example/`;
+    - a request-level E2E checks that `/auth/callback` never answers with an off-site `Location`.
+- **D-104 · 2026-11-25 · Client-bundle secret scan.**
+  - `e2e-prod/bundle-secrets.spec.ts` (part of `pnpm e2e:prod`, after `pnpm build`) reads every file under `.next/static`. It fails if any contains:
+    - the value of a server secret (from `.env.local`), compared in memory and never printed;
+    - a marker of server-only code: `sb_secret_`, `service_role`, `getAdminSupabase`, `server/admin/`, the secret variable names.
+  - It also checks that `/api/test/mailbox` is a 404 in the production build.
+- **D-105 · 2026-11-25 · Rate limits fall back to an in-process limiter (refines D-043).**
+  - **The problem:** with real Upstash, 100 parallel calls on a cold connection all passed, because `@upstash/ratelimit` resolves `success: true, reason: "timeout"` after its 2 s timeout, and Redis errors were also allowed.
+  - **The fix:**
+    - on a timeout or an error, `rateLimit()` applies the same limit with `createMemoryLimiter()` (`src/lib/ratelimit/fallback.ts`), counted per server instance and capped at 10,000 keys;
+    - an Upstash outage still doesn't lock anyone out, but one client can't burst past the limit on an instance.
+  - **Checked against real Upstash** (100 parallel calls per scope, keys deleted afterwards): clipSubmit 10, forumThread 10, forumPost 60, forumReport 10, magicLinkIp 5, removalIp 5.
+  - **Limits that remain:**
+    - across many serverless instances the fallback is per instance;
+    - Turnstile's single-use tokens and the database's new-account limits still bound public writes.
+  - **IP-keyed limits** trust `x-forwarded-for`, which Vercel sets. Off Vercel, this needs a trusted proxy.
+- **D-106 · 2026-11-25 · Turnstile space reserved on the forum and clip forms** (Phase 9 follow-up). The thread, reply and clip-submit forms keep a 65 px box from the start, as `/dmca` does, so mounting the widget on first focus never moves the submit button.
+- **D-107 · 2026-11-25 · `/about` written.** A plain-English page about the site only (no game content, so not "content" under CLAUDE.md's Don'ts): sections, fact badges, spoilers, moderation, data and credits. It has a Draft badge for owner review, like the legal pages.
+- **D-108 · 2026-11-25 · The CLI's "production" label.** `supabase db push --remote=@dev` prints "Target: project … · production" because Supabase calls every project's main branch "production". The guard resolves `@dev` to `SUPABASE_PROJECT_REF_DEV`. Phase 10 checked the ref matched and that no PROD ref is set. Check the ref, not the label.
+- **D-109 · 2026-11-25 · One site shell on 404 pages (visual QA fix).**
+  - **The bug:** a `notFound()` thrown inside `(site)` (an unknown tip slug, an unknown profile) rendered the root `not-found.tsx`, which wraps itself in `SiteShell`, inside `(site)/layout`, which already draws it. Visitors saw two headers and two footers.
+  - **Fix:**
+    - the 404 body moved to `NotFoundContent`;
+    - `(site)/not-found.tsx` and `(auth)/not-found.tsx` render it bare;
+    - the root `not-found.tsx` keeps the shell for unknown URLs, which render under the root layout only.
+  - **Test:** a smoke E2E checks four 404 shapes for exactly one `header` and one `footer`.
+- **D-110 · 2026-11-25 · E2E timing under 4 workers.**
+  - The `/admin/ui` spoiler smoke test gets 90 s, because the large showcase can take about 30 s to compile and hydrate on `next dev` under load.
+  - The moderation flow's ban and remove toasts wait 20 s.
+  - Both only failed under full-suite load. Neither changes what's asserted.

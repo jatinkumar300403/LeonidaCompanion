@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { cleanLine, cleanText } from "./text";
 import {
   BIO_MAX,
   DISPLAY_NAME_MAX,
@@ -40,9 +41,10 @@ export const usernameSchema = z
 const platformValues = PLATFORMS.map((platform) => platform.value) as [string, ...string[]];
 
 /** Empty strings become null, so clearing a field clears it in the database. */
-const optionalText = (max: number, label: string) =>
+const optionalText = (max: number, label: string, clean: (value: string) => string) =>
   z
     .string()
+    .overwrite(clean)
     .trim()
     .max(max, `${label} can be at most ${max} characters.`)
     .transform((value) => (value === "" ? null : value))
@@ -50,8 +52,8 @@ const optionalText = (max: number, label: string) =>
     .optional()
     .transform((value) => value ?? null);
 
-export const displayNameSchema = optionalText(DISPLAY_NAME_MAX, "Display name");
-export const bioSchema = optionalText(BIO_MAX, "Bio").transform((value) =>
+export const displayNameSchema = optionalText(DISPLAY_NAME_MAX, "Display name", cleanLine);
+export const bioSchema = optionalText(BIO_MAX, "Bio", cleanText).transform((value) =>
   value === null ? null : value.replace(/\r\n/g, "\n").replace(/\n{3,}/g, "\n\n"),
 );
 export const platformSchema = z

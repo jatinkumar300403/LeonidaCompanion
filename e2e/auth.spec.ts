@@ -85,8 +85,29 @@ test("signed-out visitors are sent to sign in, and /admin is hidden from members
 
 test("open redirects in ?next are ignored", async ({ page }) => {
   const member = await createAccount("redirect");
-  await signInWithMagicLink(page, member.email, "https://evil.example/");
+  // "/.//host" normalises to "//host" (D-103), the trickiest shape the guard has to catch.
+  await signInWithMagicLink(page, member.email, "/.//evil.example/");
   await expect(page).toHaveURL(/^http:\/\/localhost:\d+\/$/);
+});
+
+test("the auth callback never redirects off-site, even when the link fails", async ({ request }) => {
+  for (const next of [
+    "https://evil.example/",
+    "//evil.example",
+    "/.//evil.example",
+    "/x/..//evil.example",
+    "/\\evil.example",
+  ]) {
+    const response = await request.get(`/auth/callback?code=not-a-code&next=${encodeURIComponent(next)}`, {
+      maxRedirects: 0,
+    });
+    expect(response.status(), next).toBeGreaterThanOrEqual(300);
+    expect(response.status(), next).toBeLessThan(400);
+    const location = new URL(response.headers().location ?? "", "http://localhost:3000");
+    expect(location.hostname, next).toBe("localhost");
+    expect(location.pathname, next).toBe("/sign-in");
+    expect(location.searchParams.get("next") ?? "/", next).not.toMatch(/^\/\/|evil/);
+  }
 });
 
 /** SPEC §9 / E2E #8 (account part): delete account from settings. */

@@ -19,9 +19,25 @@ describe("safeNextPath", () => {
     ["newline inside", "/foo\nbar"],
     ["empty", ""],
     ["whitespace", "   "],
+    // Phase 10 (D-103): dot segments that normalise into a protocol-relative "//host".
+    ["dot segment before //", "/.//evil.example"],
+    ["parent segment before //", "/x/..//evil.example"],
+    ["encoded parent segment", "/%2e%2e//evil.example"],
+    ["climbing above the root", "/a/../..//evil.example/x"],
+    ["dot segment before a backslash", "/./\\evil.example"],
+    ["https without slashes", "https:evil.example"],
+    ["fullwidth solidus", "／／evil.example"],
   ])("rejects %s", (_label, value) => {
     expect(safeNextPath(value)).toBe("/");
   });
+
+  it.each(["/%2F%2Fevil.example", "/%5Cevil.example", "/.%2F/evil.example", "/tips/../forum"])(
+    "keeps %s on this site",
+    (value) => {
+      const out = safeNextPath(value);
+      expect(new URL(out, "https://site.example/auth/callback").origin).toBe("https://site.example");
+    },
+  );
 
   it("rejects non-strings and very long values", () => {
     expect(safeNextPath(undefined)).toBe("/");

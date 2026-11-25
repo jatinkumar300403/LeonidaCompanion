@@ -129,3 +129,12 @@ export function articleFieldErrors(error: z.ZodError): Record<string, string> {
   }
   return out;
 }
+
+/**
+ * The plain arguments the CMS actions take besides the form (Phase 10, D-102): an article id, the
+ * save intent and the status change. Server actions are public endpoints, so these are checked
+ * like any other input rather than trusted from their TypeScript types.
+ */
+export const articleIdSchema = z.uuid();
+export const saveIntentSchema = z.enum(["autosave", "draft", "review", "publish", "schedule", "update"]);
+export const statusActionSchema = z.enum(["unpublish", "archive", "restore"]);

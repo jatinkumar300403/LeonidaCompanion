@@ -101,10 +101,11 @@ test("a reported reply reaches the mod queue, gets removed and disappears for vi
   await banDialog.getByRole("radio", { name: "1 day" }).click();
   await banDialog.getByLabel("Reason (the member sees it)").fill("Selling coins in the help forum");
   await banDialog.getByRole("button", { name: "Ban" }).click();
-  await expect(modSide.page.getByText(`@${replier.username}: Banned.`)).toBeVisible();
+  // The ban RPC plus its notification can take several seconds under 4 workers on next dev.
+  await expect(modSide.page.getByText(`@${replier.username}: Banned.`)).toBeVisible({ timeout: 20_000 });
 
   await card.getByRole("button", { name: "Remove" }).click();
-  await expect(modSide.page.getByText("Removed. Reports closed.")).toBeVisible();
+  await expect(modSide.page.getByText("Removed. Reports closed.")).toBeVisible({ timeout: 20_000 });
   await expect(card).toHaveCount(0);
   await modSide.context.close();
 

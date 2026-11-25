@@ -68,7 +68,7 @@ export default async function ProfilePage({ params }: PageProps<"/u/[username]">
           <div className="min-w-0 flex-1 space-y-2">
             <div className="flex flex-wrap items-center gap-2">
               <h1 id="profile-name" className="truncate text-2xl font-bold sm:text-3xl">
-                {profile.displayName || `@${profile.username}`}
+                {profile.displayName ? <bdi>{profile.displayName}</bdi> : `@${profile.username}`}
               </h1>
               {profile.role !== "user" ? (
                 <Badge variant={profile.role === "admin" ? "pink" : "violet"}>{ROLE_LABELS[profile.role]}</Badge>

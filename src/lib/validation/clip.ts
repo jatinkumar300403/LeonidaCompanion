@@ -2,6 +2,7 @@ import { z } from "zod";
 import { CLIP_CAPTION_MAX } from "@/config/clips";
 import { CLIP_CATEGORIES, type ClipCategory } from "@/config/tags";
 import { CLIP_URL_MAX } from "@/lib/clips/parse";
+import { cleanLineString } from "./text";
 
 /** Clip input validation (SPEC §6). Mirrors the database checks where they overlap. */
 
@@ -20,8 +21,7 @@ export const clipUrlSchema = z
 export const clipSubmitSchema = z.object({
   url: clipUrlSchema,
   category: clipCategorySchema,
-  caption: z
-    .string()
+  caption: cleanLineString()
     .trim()
     .max(CLIP_CAPTION_MAX, `Keep the caption under ${CLIP_CAPTION_MAX} characters.`)
     .default(""),

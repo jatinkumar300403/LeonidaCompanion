@@ -46,6 +46,14 @@ test("a member submits a YouTube clip, an admin approves it, and visitors play i
   await main.getByRole("button", { name: "Send for review" }).click();
   await expect(main.getByRole("heading", { name: "Sent for review" })).toBeVisible({ timeout: 30_000 });
 
+  // Phase 10 abuse case: the same clip again (another URL shape) is caught before it's sent.
+  await page.goto("/clips/submit");
+  await main.getByLabel("Clip link").fill(`https://www.youtube.com/watch?v=${videoId}`);
+  await expect(main.getByText("Someone already sent this clip. It's waiting for a moderator.")).toBeVisible({
+    timeout: 30_000,
+  });
+  await expect(main.getByRole("button", { name: "Send for review" })).toBeDisabled();
+
   const admin = adminClient();
   const { data: row } = await admin
     .from("clips")

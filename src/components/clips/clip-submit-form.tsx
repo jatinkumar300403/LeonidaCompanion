@@ -181,7 +181,8 @@ export function ClipSubmitForm({ parentHosts }: { parentHosts: readonly string[]
         <FieldError id={`${id}-spoiler-error`} message={errors.notSpoiler} />
       </div>
 
-      {engaged ? <TurnstileField key={turnstileKey} action="clip-submit" /> : null}
+      {/* Reserved from the start, so mounting the widget on first focus never moves the button (D-106). */}
+      <div className="min-h-[65px]">{engaged ? <TurnstileField key={turnstileKey} action="clip-submit" /> : null}</div>
 
       {formError ? (
         <Notice tone="error" title="Not sent">

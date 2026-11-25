@@ -56,7 +56,7 @@ export function AccountMenu({ userId, profile }: { userId: string; profile: Acco
             <>
               <DropdownMenuLabel className="font-normal">
                 <span className="block truncate font-semibold text-foreground">
-                  {profile.display_name || `@${profile.username}`}
+                  {profile.display_name ? <bdi>{profile.display_name}</bdi> : `@${profile.username}`}
                 </span>
                 {profile.display_name ? (
                   <span className="block truncate text-xs text-muted-foreground">@{profile.username}</span>

@@ -1,6 +1,6 @@
 # PROGRESS — Leonida Atlas
 
-Launch: **Thu 19 Nov 2026**. Last updated: 2026-11-23 (Phase 9). Spec: `docs/SPEC.md`. Decisions: `docs/DECISIONS.md` (D-xxx).
+Launch: **Thu 19 Nov 2026** (passed; the site isn't deployed yet). Last updated: 2026-11-25 (Phase 10). Spec: `docs/SPEC.md`. Decisions: `docs/DECISIONS.md` (D-xxx).
 Legend: `[x]` done · `[ ]` to do · ⚡ = cut first if behind. The kit's fallback: ship 0–6 and 9–11 on launch day, then 7–8 on the 20th.
 
 ## Status
@@ -157,10 +157,60 @@ Legend: `[x]` done · `[ ]` to do · ⚡ = cut first if behind. The kit's fallba
       - the install banner is fully opaque;
       - the privacy page names the real "Export my data" button.
   - DEV was cleaned with `pnpm test:cleanup`: no reports, test users, E2E articles, threads or clips, and `sample-tip-1` is back to draft.
-- **Next:** Phase 10 (Prompt 10: QA hardening), then Phase 11 (production deploy). Phases 7–8 (wiki ingestion, Ask AI) follow (kit cut line).
-  - Phase 8 must run `onThreadCreated()` when a mod approves a held Q&A thread (D-080).
-  - Phase 8 should fire `ask_submitted` and `ask_feedback` from the real Ask flow; today they're wired to the stub page and `AnswerActions`.
-  - Phase 10 can rerun `pnpm e2e:prod` and `pnpm lhci` on a fresh build (D-099 has the Windows Chromium note).
+- **Done: Phase 10.**
+  - QA hardening before the production deploy (D-100 to D-108). It ran as a strict review on DEV only.
+  - **Security review:** every server action (11 files) and route handler (13) checked for auth, zod, rate limits, Turnstile and the maintenance flag. RLS attacked with anon and member clients. Client bundles scanned. An XSS payload list run through the markdown pipeline. Redirects and cron secrets checked. Fixes:
+    - **Vote farming (D-100):** a member could retarget their own vote row, which moved no score, then vote again. Repeated, that farmed any post's score and its author's reputation, which unlocks links and skips the new-account hold. `helpful` feedback had the same gap. Fixed with a migration on DEV (`20261125090000_qa_hardening.sql`), with tests in the new `supabase/tests/attacks.test.ts` (15 attacks).
+    - **Open redirect (D-103):** `/auth/callback?next=/.//evil.example` sent a freshly signed-in user off-site, because dot segments normalised to `//host` after the check. Fixed in `safeNextPath`, with unit cases, the sign-in E2E and a request-level callback E2E.
+    - **Rate limits under a burst (D-105):** against real Upstash, 100 parallel calls on a cold connection all passed (Upstash's 2 s timeout fails open). Timeouts and errors now fall back to an in-process copy of the same limit. Rechecked live: every scope stops at its limit.
+    - **Invisible and bidi characters (D-101):** stripped from display names, bios, thread titles and bodies, replies, report details, clip captions and the removal form. Display names render in `<bdi>`.
+    - **Action input (D-102):** two Settings actions threw on crafted values (now `safeParse`). `removeAvatar` is rate-limited. The CMS actions validate their ids and intents. The reply composer shows the real field error and survives a request over 1 MB.
+    - **New regression checks:**
+      - `e2e-prod/bundle-secrets.spec.ts`: no server secret values or service-role code in `.next/static`, and no test mailbox in production (D-104);
+      - 34 XSS payloads × 4 renderer modes (`markdown-renderer.test.tsx`);
+      - JSON-LD `</script>` breakout;
+      - 58 cron-route cases: every malformed or wrong bearer gets a 401 on GET and POST, and the no-key outcomes.
+    - **Checked and fine:**
+      - RLS already blocks un-holding your own content, moving a thread into Online, accepting a reply from another thread, replying in held, removed or locked threads, voting on hidden threads, reading other members' blocks, editing clips, resolving reports, calling the private RPCs, and deleting or overwriting another member's avatar;
+      - only `src/server/admin/*` and the cron routes use the service role;
+      - production refuses to boot without Upstash, Turnstile, `CRON_SECRET` and `ANON_HASH_SALT`.
+  - **Abuse cases (DEV):**
+    - 100 rapid requests per scope against real Upstash;
+    - oversized bodies (20,001 characters → "Keep it under 20,000 characters."; 1.1 MB → refused by Next, with a friendly message; the database CHECKs also refuse them over PostgREST);
+    - unicode and RTL usernames (refused) and display names (cleaned);
+    - link spam from new accounts (database tests from Phase 4, plus the fallback hold);
+    - duplicate clip submissions (a second URL shape is caught in the preview; two simultaneous inserts store one row).
+    - **Ask AI prompt injection is skipped:** Phase 8 isn't built (open item below).
+  - **No-key behaviour** (Anthropic, Voyage, Twitch, YouTube, Resend and Sentry are all empty): Twitch and YouTube links say "can't be checked yet", `twitch-clips` skips, the moderation fallback holds content with an admin banner, Sentry does nothing, and email goes to the dev outbox.
+  - **Phase 9 follow-ups:** the Turnstile box is reserved on the thread, reply and clip-submit forms (D-106). `/about` is written (Draft badge, D-107).
+  - **`docs/RUNBOOK.md`:** Quick Tips, clips, reports and bans, removal requests, flags, crons, key rotation and outage playbooks, plus the wiki-sync and Ask AI sections marked "after Phase 7/8".
+  - **Visual QA** (a Playwright script, as in Phases 5–9): 164 captures, covering every top-level route at 390 and 1440 in dark and light, as a visitor, an admin and a new account (onboarding), all in the empty state.
+    - No horizontal overflow and no 5xx anywhere.
+    - **Fixed:** 404 pages inside a route group drew the header and footer twice (D-109).
+    - **Harmless console noise:** Turnstile's own `data:` CSP messages (D-092) and React's dev-only "script tag" warning from next-themes on 404s.
+    - The production home was captured separately: no `[SAMPLE]` content (that's dev-only), intentional empty states, no overflow.
+  - **Lighthouse mobile** (production build, `pnpm lhci`, median of 3): `/`, `/tips/sample-tip-1`, `/forum` and `/clips` each score **100 / 100 / 100 / 100**, with LCP 1.2 s, CLS 0 and TBT 30–77 ms.
+    - On Windows, Lighthouse must use a Chromium that Playwright launched with `--remote-debugging-port=9222`, and `lhci` has to run **asynchronously** from that script: a blocking `execSync` stalls Lighthouse's tabs (D-099).
+  - **Checks:**
+    - `pnpm typecheck`, `lint`, `format:check` and `build` pass;
+    - `pnpm test`: 930 unit tests (141 new), plus 11 live tests that skip without a key;
+    - `pnpm test:db`: 102 tests (15 new in `attacks.test.ts`);
+    - `pnpm e2e --workers=4`: 158 passed, 12 viewport skips. The two load-sensitive waits were widened (D-110);
+    - `pnpm e2e:prod`: 23 passed (new: the bundle-secret scan and the production test-mailbox 404);
+    - `pnpm lhci` assertions pass.
+  - **DEV is clean** after `pnpm test:cleanup`: no test users, threads, posts, clips, reports, audit rows, votes or feedback, no published articles, and the flags are all off. `sample-tip-1` is back to draft, and the Upstash test keys are deleted.
+- **Next:** Phase 11 (production deploy), then Phases 7–8 (wiki ingestion, Ask AI).
+  - Phase 11 pushes all migrations to PROD, including `20261125090000_qa_hardening.sql` (D-100).
+  - Phase 11 adds the cron schedules (`vercel.json` or `.github/workflows/cron.yml`, D-012) and sets `NEXT_PUBLIC_SITE_HOSTS`.
+  - **Open items for Phases 7–8:**
+    - the Ask AI prompt-injection abuse case ("ignore your sources…" must stay grounded, rule 8);
+    - the live wiki-sync runbook steps (RUNBOOK §6–7);
+    - `onThreadCreated()` when a mod approves a held Q&A thread (D-080);
+    - `ask_submitted` and `ask_feedback` fired from the real Ask flow.
+- **Owner to-dos from Phase 10:**
+  - **Review the `/about` draft**, then remove its Draft badge (`draft={false}` on its `LegalPage`). It describes the site only, not the game.
+  - **Read `docs/RUNBOOK.md`** before launch day, especially §3 (reports and removal requests), §8 (key rotation) and §9 (outages).
+  - **Before launch:** the Anthropic key (Phase 6 to-dos) is the biggest gap. Without it, nearly every new member's posts are held for review.
 - **Owner to-dos from Phase 9:**
   - **Sentry:**
     - create the project;
@@ -239,8 +289,11 @@ Legend: `[x]` done · `[ ]` to do · ⚡ = cut first if behind. The kit's fallba
   - The film grain on hero areas now shows from the `lg` breakpoint only (D-099).
   - The service worker precaches only CSS, Latin fonts, icons and `/offline`; JS chunks are cached as pages are visited. A guide opened offline before its chunks were cached still reads, but without interactive bits (D-095).
   - On this Windows machine, Lighthouse can't start Chromium itself (`spawn UNKNOWN`). Start Chromium with `--remote-debugging-port=9222` (for example through Playwright), then run `LHCI_CHROME_PORT=9222 pnpm lhci`. Linux CI doesn't need this.
-  - The forum thread, reply and clip-submit forms mount Turnstile on first focus, right above their submit button. If someone's first interaction were a click on that button, the widget would push it down and the click would miss. Today those buttons stay disabled until something is typed, so it can't happen, but Phase 10 should reserve the box as `/dmca` now does.
-  - `/about` is still a stub ("This page is being written"). Phase 10's empty-state review, or the owner, should write it.
+  - **Rate-limit fallback is per instance (D-105):** while Upstash is slow or down, each serverless instance counts on its own, so a burst spread across many instances can exceed a limit. Turnstile tokens are single-use and the database caps new accounts, so public writes stay bounded.
+  - IP-keyed limits trust `x-forwarded-for`, which Vercel sets. Hosting off Vercel needs a trusted proxy in front (D-105).
+  - `/api/og` draws any `?title=` (capped in length) and isn't rate-limited. On Vercel the CDN caches the images; consider a limit or an allowlist if it's abused.
+  - Rows stored before D-101 keep any invisible characters. DEV has none, and PROD starts empty.
+  - Vote rows can't change target any more (D-100). If a future feature needs to move votes (merging threads, say), it has to run with the service role.
 
 ## Owner setup (docs/SETUP.md) → needed by
 - [x] Node 24.18 LTS, pnpm 12.21 (corepack, D-003), Git 2.55, Playwright Chromium; `CRON_SECRET` + `ANON_HASH_SALT` in `.env.local`
@@ -308,8 +361,8 @@ Legend: `[x]` done · `[ ]` to do · ⚡ = cut first if behind. The kit's fallba
 - [ ] JS budget: 216–236 KB first load vs SPEC's 150 KB (known issue)
 
 ### 10 · QA hardening · §15 · Prompt 10
-- [ ] All E2E (mobile + desktop); RLS attacks; auth/zod/rate-limit/Turnstile audit; XSS payload list; open redirects; cron secret
-- [ ] Abuse cases; empty states; visual QA at 390/1440 in dark and light; `docs/RUNBOOK.md`; go/no-go list
+- [x] All E2E (mobile + desktop); RLS attacks; auth/zod/rate-limit/Turnstile audit; XSS payload list; open redirects; cron secret (D-100 to D-105)
+- [x] Abuse cases (Ask AI injection waits for Phase 8); empty states; visual QA at 390/1440 in dark and light; `docs/RUNBOOK.md`; go/no-go list
 
 ### 11 · Production deploy · §12 · Prompt 11
 - [ ] `docs/DEPLOY.md`; PROD Supabase gets migrations + seed only, plus auth config; re-link the CLI to DEV afterwards

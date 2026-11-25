@@ -22,6 +22,9 @@ export function safeNextPath(raw: unknown, fallback = "/"): string {
     return fallback;
   }
   if (url.origin !== BASE) return fallback;
+  // Dot segments normalise after the check above: "/.//evil.example" becomes "//evil.example",
+  // which a browser reads as another host (D-103). Check the normalised path again.
+  if (url.pathname.startsWith("//") || url.pathname.includes("\\")) return fallback;
 
   const path = `${url.pathname}${url.search}${url.hash}`;
   if (

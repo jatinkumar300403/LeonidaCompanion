@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { cleanLineString, cleanString } from "./text";
 
 /**
  * Content-removal (DMCA) requests (SPEC §14, D-098). Anyone can send one, signed in or not. The
@@ -31,16 +32,14 @@ const httpUrl = z
   }, "Paste the full address, starting with https://");
 
 export const removalRequestSchema = z.object({
-  name: z
-    .string()
+  name: cleanLineString()
     .trim()
     .min(2, "Enter your name.")
     .max(REMOVAL_LIMITS.name, `Keep it under ${REMOVAL_LIMITS.name} characters.`),
   email: z.email("Enter a valid email address.").trim().toLowerCase().max(REMOVAL_LIMITS.email),
   url: httpUrl,
   role: z.enum(REMOVAL_ROLES, "Say how the content relates to you."),
-  description: z
-    .string()
+  description: cleanString()
     .trim()
     .min(10, "Tell us what the content is and why it's yours.")
     .max(REMOVAL_LIMITS.description, `Keep it under ${REMOVAL_LIMITS.description} characters.`),

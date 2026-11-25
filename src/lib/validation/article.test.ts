@@ -108,3 +108,18 @@ describe("launch facts", () => {
     expect(hasLaunchFacts(seeded)).toBe(false);
   });
 });
+
+describe("CMS action arguments (D-102)", () => {
+  it("accepts real ids, intents and status actions only", async () => {
+    const { articleIdSchema, saveIntentSchema, statusActionSchema } = await import("./article");
+    expect(articleIdSchema.safeParse("6f1c2d4e-8a9b-4c3d-9e2f-1a2b3c4d5e6f").success).toBe(true);
+    for (const bad of ["", "1", "../x", "6f1c2d4e-8a9b-4c3d-9e2f-1a2b3c4d5e6f' or 1=1", null, 42]) {
+      expect(articleIdSchema.safeParse(bad).success).toBe(false);
+    }
+    expect(saveIntentSchema.safeParse("publish").success).toBe(true);
+    expect(saveIntentSchema.safeParse("delete").success).toBe(false);
+    expect(statusActionSchema.safeParse("archive").success).toBe(true);
+    expect(statusActionSchema.safeParse("publish").success).toBe(false);
+    expect(statusActionSchema.safeParse("__proto__").success).toBe(false);
+  });
+});
